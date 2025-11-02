@@ -10,10 +10,8 @@ from config import (
     JWT_ACCESS_SECRET_FOR_AUTH,
     JWT_ALGORITHM,
     JWT_REFRESH_SECRET_FOR_AUTH,
+    JWT,
 )
-
-ACCESS_TOKEN_EXPIRES_MINUTES = 60
-REFRESH_TOKEN_EXPIRES_DAYS = 60
 
 
 class TokenError(Exception):

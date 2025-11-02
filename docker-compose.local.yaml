@@ -12,7 +12,7 @@ services:
       - quicksend_network
 
   nginx:
-    image: nginx:alpine
+    image: nginx:1.29
     container_name: nginx
     ports:
       - "80:80"
@@ -47,129 +47,16 @@ services:
       timeout: 5s
       retries: 5
 
-  kafka1:
-    image: bitnami/kafka:latest
-    container_name: kafka1
+  rabbitmq:
+    image: rabbitmq:4.2-management
     ports:
-      - "9092:9092"  # INTERNAL (SASL_PLAINTEXT)
-      - "9093:9093"  # EXTERNAL (SASL_SSL)
-      - "9101:9101"  # CONTROLLER (PLAINTEXT)
+      - "5672:5672"
+      - "15672:15672"
     environment:
-      # KRaft режим - основные настройки
-      KAFKA_ENABLE_KRAFT: "yes"
-      KAFKA_CFG_PROCESS_ROLES: "controller,broker"
-      KAFKA_CFG_NODE_ID: "1"
-      KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: "1@kafka1:9101,2@kafka2:9101"
-      KAFKA_CFG_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
-
-      # Listeners с аутентификацией
-      KAFKA_CFG_LISTENERS: "INTERNAL://0.0.0.0:9092,EXTERNAL://0.0.0.0:9093,CONTROLLER://0.0.0.0:9101"
-      KAFKA_CFG_ADVERTISED_LISTENERS: "INTERNAL://kafka1:9092,EXTERNAL://localhost:9093"
-      KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: "INTERNAL:SASL_PLAINTEXT,EXTERNAL:SASL_SSL,CONTROLLER:PLAINTEXT"
-      KAFKA_CFG_INTER_BROKER_LISTENER_NAME: "INTERNAL"
-
-      # SASL настройки
-      KAFKA_CFG_SASL_ENABLED_MECHANISMS: "PLAIN"
-      KAFKA_CFG_SASL_MECHANISM_INTER_BROKER_PROTOCOL: "PLAIN"
-
-      # Учетные данные для SASL
-      KAFKA_CLIENT_USERS: ${KAFKA_CLIENT_USERS}
-      KAFKA_CLIENT_PASSWORDS: ${KAFKA_CLIENT_PASSWORDS}
-      KAFKA_INTER_BROKER_USER: ${KAFKA_INTER_BROKER_USER}
-      KAFKA_INTER_BROKER_PASSWORD: ${KAFKA_INTER_BROKER_PASSWORD}
-
-      # SSL настройки с внешними сертификатами
-      KAFKA_CFG_SSL_KEYSTORE_LOCATION: "/bitnami/kafka/config/certs/kafka.keystore.jks"
-      KAFKA_CFG_SSL_KEYSTORE_PASSWORD: ${KAFKA_KEYSTORE_PASSWORD}
-      KAFKA_CFG_SSL_KEY_PASSWORD: ${KAFKA_KEY_PASSWORD}
-      KAFKA_CFG_SSL_TRUSTSTORE_LOCATION: "/bitnami/kafka/config/certs/kafka.truststore.jks"
-      KAFKA_CFG_SSL_TRUSTSTORE_PASSWORD: ${KAFKA_TRUSTSTORE_PASSWORD}
-      KAFKA_CFG_SSL_CLIENT_AUTH: "none"
-
-      # Cluster ID
-      KAFKA_KRAFT_CLUSTER_ID: ${KAFKA_KRAFT_CLUSTER_ID}
-
-      # Основные настройки
-      KAFKA_CFG_NUM_PARTITIONS: "6"
-      KAFKA_CFG_DEFAULT_REPLICATION_FACTOR: "2"
-      KAFKA_CFG_MIN_INSYNC_REPLICAS: "1"
-      KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: "true"
-      KAFKA_CFG_OFFSETS_TOPIC_REPLICATION_FACTOR: "2"
-      KAFKA_CFG_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: "2"
-      KAFKA_CFG_TRANSACTION_STATE_LOG_MIN_ISR: "1"
-      KAFKA_HEAP_OPTS: "-Xmx1G -Xms1G"
-
-      KAFKA_OPTS: "-Djavax.net.debug=ssl:handshake"
-
-      # Разрешаем plaintext для controller
-      ALLOW_PLAINTEXT_LISTENER: "yes"
+      RABBITMQ_DEFAULT_USER: "${RABBITMQ_DEFAULT_USER}"
+      RABBITMQ_DEFAULT_PASS: "${RABBITMQ_DEFAULT_PASS}"
     volumes:
-      - kafka1_data:/bitnami/kafka
-      - ./certs3:/bitnami/kafka/config/certs:ro
-    networks:
-      - web_app
-
-  kafka2:
-    image: bitnami/kafka:latest
-    container_name: kafka2
-    ports:
-      - "9094:9092"  # INTERNAL (SASL_PLAINTEXT)
-      - "9095:9093"  # EXTERNAL (SASL_SSL)
-      - "9102:9101"  # CONTROLLER (PLAINTEXT)
-    environment:
-      # KRaft режим - основные настройки
-      KAFKA_ENABLE_KRAFT: "yes"
-      KAFKA_CFG_PROCESS_ROLES: "controller,broker"
-      KAFKA_CFG_NODE_ID: "2"
-      KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: "1@kafka1:9101,2@kafka2:9101"
-      KAFKA_CFG_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
-
-      # Listeners с аутентификацией
-      KAFKA_CFG_LISTENERS: "INTERNAL://0.0.0.0:9092,EXTERNAL://0.0.0.0:9093,CONTROLLER://0.0.0.0:9101"
-      KAFKA_CFG_ADVERTISED_LISTENERS: "INTERNAL://kafka2:9092,EXTERNAL://localhost:9095"
-      KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: "INTERNAL:SASL_PLAINTEXT,EXTERNAL:SASL_SSL,CONTROLLER:PLAINTEXT"
-      KAFKA_CFG_INTER_BROKER_LISTENER_NAME: "INTERNAL"
-
-      # SASL настройки
-      KAFKA_CFG_SASL_ENABLED_MECHANISMS: "PLAIN"
-      KAFKA_CFG_SASL_MECHANISM_INTER_BROKER_PROTOCOL: "PLAIN"
-
-      # Учетные данные для SASL
-      KAFKA_CLIENT_USERS: ${KAFKA_CLIENT_USERS}
-      KAFKA_CLIENT_PASSWORDS: ${KAFKA_CLIENT_PASSWORDS}
-      KAFKA_INTER_BROKER_USER: ${KAFKA_INTER_BROKER_USER}
-      KAFKA_INTER_BROKER_PASSWORD: ${KAFKA_INTER_BROKER_PASSWORD}
-
-      # SSL настройки с внешними сертификатами
-      KAFKA_CFG_SSL_KEYSTORE_LOCATION: "/bitnami/kafka/config/certs/kafka.keystore.jks"
-      KAFKA_CFG_SSL_KEYSTORE_PASSWORD: ${KAFKA_KEYSTORE_PASSWORD}
-      KAFKA_CFG_SSL_KEY_PASSWORD: ${KAFKA_KEY_PASSWORD}
-      KAFKA_CFG_SSL_TRUSTSTORE_LOCATION: "/bitnami/kafka/config/certs/kafka.truststore.jks"
-      KAFKA_CFG_SSL_TRUSTSTORE_PASSWORD: ${KAFKA_TRUSTSTORE_PASSWORD}
-      KAFKA_CFG_SSL_CLIENT_AUTH: "none"
-
-      # Cluster ID
-      KAFKA_KRAFT_CLUSTER_ID: ${KAFKA_KRAFT_CLUSTER_ID}
-
-      # Основные настройки
-      KAFKA_CFG_NUM_PARTITIONS: "6"
-      KAFKA_CFG_DEFAULT_REPLICATION_FACTOR: "2"
-      KAFKA_CFG_MIN_INSYNC_REPLICAS: "1"
-      KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: "true"
-      KAFKA_CFG_OFFSETS_TOPIC_REPLICATION_FACTOR: "2"
-      KAFKA_CFG_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: "2"
-      KAFKA_CFG_TRANSACTION_STATE_LOG_MIN_ISR: "1"
-      KAFKA_HEAP_OPTS: "-Xmx1G -Xms1G"
-
-      KAFKA_OPTS: "-Djavax.net.debug=ssl:handshake"
-
-      # Разрешаем plaintext для controller
-      ALLOW_PLAINTEXT_LISTENER: "yes"
-    volumes:
-      - kafka2_data:/bitnami/kafka
-      - ./certs3:/bitnami/kafka/config/certs:ro
-    networks:
-      - web_app
+      - rabbitmq
 
   redis:
     image: 'redis:latest'
@@ -178,23 +65,6 @@ services:
       - "6379:6379"
     volumes:
       - redis_data:/data
-
-  buggregator:
-    image: butschster/buggregator:1.12.1
-    environment:
-      AUTH_ENABLED: "${AUTH_ENABLED}"
-      AUTH_PROVIDER: "${AUTH_PROVIDER}"
-      AUTH_PROVIDER_URL: "${AUTH_PROVIDER_URL}"
-      AUTH_CLIENT_ID: "${AUTH_CLIENT_ID}"
-      AUTH_CLIENT_SECRET: "${AUTH_CLIENT_SECRET}"
-      AUTH_CALLBACK_URL: "${AUTH_CALLBACK_URL}"
-      AUTH_SCOPES: "${AUTH_SCOPES}"
-      SENTRY_LARAVEL_DSN: "${SENTRY_LARAVEL_DSN}"
-      SENTRY_SECRET_KEY: "${SENTRY_SECRET_KEY}"
-      SENTRY_ENVIRONMENT: "${SENTRY_ENVIRONMENT}"
-      SENTRY_RELEASE: "${SENTRY_RELEASE:-latest}"
-    networks:
-      - quicksend_network
 
   consumer1:
     build:
@@ -262,4 +132,6 @@ volumes:
   redis_data:
     driver: local
   postgres_data:
+    driver: local
+  rabbitmq_data:
     driver: local
