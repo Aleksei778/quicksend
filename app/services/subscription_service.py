@@ -1,7 +1,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 
-from database.models import User, Subscription
+from googleapiclient.discovery import build
 
 
 class SubscriptionService:
