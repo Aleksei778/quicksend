@@ -27,6 +27,9 @@ services:
     networks:
       - quicksend_network
 
+  kafka:
+    image: apache/kafka
+
   postgres:
     image: postgres:17.4
     container_name: postgres
@@ -40,17 +43,6 @@ services:
       - postgres_data:/var/lib/postgresql/data
     networks:
       - quicksend_network
-
-  rabbitmq:
-    image: rabbitmq:4.2-management
-    ports:
-      - "5672:5672"
-      - "15672:15672"
-    environment:
-      RABBITMQ_DEFAULT_USER: "${RABBITMQ_DEFAULT_USER}"
-      RABBITMQ_DEFAULT_PASS: "${RABBITMQ_DEFAULT_PASS}"
-    volumes:
-      - rabbitmq
 
   redis:
     image: 'redis:latest'

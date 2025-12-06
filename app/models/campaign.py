@@ -24,6 +24,7 @@ class Campaign(Base):
     body_template = Column(Text, nullable=True)
     status = Column(Enum(CampaignStatus), default=CampaignStatus.DRAFT)
     started_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    end_at = Column(DateTime, nullable=True)
 
     user_id = Column(Integer, ForeignKey("users.id"))
 

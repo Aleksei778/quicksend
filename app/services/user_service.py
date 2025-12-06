@@ -23,7 +23,10 @@ class UserService:
         return user
 
     async def find_user_by_id(self, user_id: int) -> User | None:
-        return  await self.db.get(User, user_id)
+        return await self.db.get(User, user_id)
+
+    async def find_user_by_email(self, email: str) -> User:
+        return self.db.get(User, email)
 
     async def get_user_subs(self, user_id: int) -> List[Subscription] | None:
         user = await self.find_user_by_id(user_id)
@@ -32,8 +35,6 @@ class UserService:
             return None
 
         return user.subscriptions
-
-    async def is_
 
     async def is_user_already_used_trial(self, user_id: int) -> bool:
         user = await self.find_user_by_id(user_id)

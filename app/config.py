@@ -1,4 +1,3 @@
-from celery.bin.base import CeleryOption
 from dotenv import load_dotenv
 import os
 
@@ -17,8 +16,6 @@ REFRESH_TOKEN_EXPIRES_DAYS = 7
 JWT_ALGORITHM = os.getenv("JWT_ALGORITHM")
 
 SECRET_FOR_MANAGER = os.getenv("SECRET_FOR_MANAGER")
-GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
-GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
 SESSION_SECRET_KEY = os.getenv("SESSION_SECRET_KEY")
 BASE_URL = os.getenv("BASE_URL")
 
@@ -32,14 +29,6 @@ PAYPAL_WEBHOOK_ID = os.getenv("PAYPAL_WEBHOOK_ID")
 YOOKASSA_SHOP_ID = os.getenv("YOOKASSA_SHOP_ID")
 YOOKASSA_SECRET_KEY = os.getenv("YOOKASSA_SECRET_KEY")
 
-RABBITMQ
-
-SCOPES = [
-    "https://www.googleapis.com/auth/gmail.send",
-    "https://www.googleapis.com/auth/userinfo.profile",
-    "https://www.googleapis.com/auth/userinfo.email",
-]
-
 CORS_ORIGINS = [
     "http://127.0.0.1:8000",
     "chrome-extension://fekaiggohacnhgaleajohgpipbmbiaca",
@@ -49,4 +38,11 @@ CORS_ORIGINS = [
 
 ENCRYPTION_KEY = os.environ.get("ENCRYPTION_KEY")
 
-CELERY_BROKER_URL = os.getenv()
+GOOGLE_AUTH_SCOPES = os.getenv("GOOGLE_AUTH_SCOPES")
+GOOGLE_AUTHORIZE_URL = os.getenv("GOOGLE_AUTHORIZE_URL")
+GOOGLE_ACCESS_TOKEN_URL = os.getenv("GOOGLE_ACCESS_TOKEN_URL")
+GOOGLE_REDIRECT_URL = os.getenv("GOOGLE_REDIRECT_URL")
+GOOGLE_CONFIGURATION_URL = os.getenv("GOOGLE_CONFIGURATION_URL")
+GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
+GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
+GOOGLE_USERINFO_URL = os.getenv("GOOGLE_USERINFO_URL")

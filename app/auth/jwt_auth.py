@@ -105,13 +105,13 @@ class JWTHandler:
             if not user:
                 print("not user")
                 raise TokenError("User not found")
-
+                # Создаем новую информацию для токенов
+                active_sub = await db_manager.get_active_sub(user
             user_id = user.id
             user_name = user.first_name + " " + user.last_name
             user_email = user.email
 
-            # Создаем новую информацию для токенов
-            active_sub = await db_manager.get_active_sub(user_id=user_id)
+         _id=user_id)
 
             active_sub_dict = {"plan": "No active sub"}
 

@@ -1,10 +1,12 @@
 from fastapi.params import Depends
 from googleapiclient.discovery import build, Resource
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from google.oauth2.credentials import Credentials
 import asyncio
 
 from models.google_token import GoogleToken
+from models.user import User
 from config import GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET
 from services.google_token_service import GoogleTokenService
 
@@ -27,8 +29,8 @@ class SendEmailsService:
 
     async def send_emails_via_gmail_api(self, google_token_service: GoogleTokenService = Depends(GoogleTokenService)):
         try:
-            stmt_user = select(UserOrm).where(UserOrm.email == user_id)
-            result_user = await db.execute(stmt_user)
+            stmt_user = select(User).where(UserOrm.email == user_id)
+            result_user = await self.db.execute(stmt_user)
             user = result_user.scalar_one_or_none()
 
             if not user:
@@ -43,8 +45,8 @@ class SendEmailsService:
                 .send(userId="me", body=message_data["message"])
                 .execute()
             )
-            logger.info(f"Email to {message_data['recipient']} sent successfully")
+            # logger.info(f"Email to {message_data['recipient']} sent successfully")
         except HttpError as e:
             logger.error(f"Failed to send email to {message_data['recipient']}: {e}")
         except Exception as e:
-            logger.error(f"Unexpected error for {message_data['recipient']}: {e}")
+             logger.error(f"Unexpected error for {message_data['recipient']}: {e}")
