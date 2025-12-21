@@ -4,7 +4,6 @@ from fastapi import HTTPException, Depends, routing
 from sqlalchemy.ext.asyncio import AsyncSession
 from collections import OrderedDict
 
-from google_token_file import get_sheets_service
 from auth.dependencies import get_current_user, get_db
 
 

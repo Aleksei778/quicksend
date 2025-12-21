@@ -1,124 +1,133 @@
+from datetime import datetime, timedelta
+import jwt
+from typing import Dict, Any, Optional
+from fastapi import HTTPException, status
 
+from config import (
+    JWT_ACCESS_SECRET_FOR_AUTH,
+    JWT_REFRESH_SECRET_FOR_AUTH,
+    JWT_ALGORITHM,
+    ACCESS_TOKEN_EXPIRES_MINUTES,
+    REFRESH_TOKEN_EXPIRES_DAYS
+)
+from services.user_service import UserService
 
 
 class JwtService:
-    def __init__(self):
+    def __init__(self, user_service: UserService):
         self.access_secret = JWT_ACCESS_SECRET_FOR_AUTH
         self.refresh_secret = JWT_REFRESH_SECRET_FOR_AUTH
         self.algorithm = JWT_ALGORITHM
+        self.user_service = user_service
 
-    async def create_access_token(self, data: Dict[str, Any]) -> str:
-        to_encode = data.copy()
+    async def create_access_token(self, user_data: Dict[str, Any]) -> str:
+        to_encode = user_data.copy()
         expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRES_MINUTES)
-        to_encode.update({"exp": expire, "type": "access"})
+        to_encode.update({
+            "exp": expire,
+            "iat": datetime.utcnow(),
+            "type": "access"
+        })
 
-        try:
-            encoded_jwt = jwt.encode(
-                to_encode, self.access_secret, algorithm=self.algorithm
-            )
-            return encoded_jwt
-        except Exception as e:
-            raise TokenError(f"Error creating access token: {str(e)}")
+        return jwt.encode(to_encode, self.access_secret, self.algorithm)
 
-    async def create_refresh_token(self, data: Dict[str, Any]) -> str:
-        to_encode = data.copy()
-        expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRES_MINUTES)
-        to_encode.update({"exp": expire, "type": "refresh"})
+    async def create_refresh_token(self, user_data: Dict[str, Any]) -> str:
+        to_encode = user_data.copy()
+        expire = datetime.utcnow() + timedelta(minutes=REFRESH_TOKEN_EXPIRES_DAYS)
+        to_encode.update({
+            "exp": expire,
+            "iat": datetime.utcnow(),
+            "type": "refresh"
+        })
 
-        try:
-            encoded_jwt = jwt.encode(
-                to_encode, self.refresh_secret, algorithm=self.algorithm
-            )
-            return encoded_jwt
-        except Exception as e:
-            raise TokenError(f"Error creating refresh token: {str(e)}")
+        return jwt.encode(to_encode, self.refresh_secret, algorithm=self.algorithm)
 
-    async def verify_token(
-        self, token: str, token_type: str = "access"
+    async def verify_access_token(self, token: str) -> Optional[Dict[str, Any]]:
+        return await self._verify_token(token, "access", self.access_secret)
+
+    async def verify_refresh_token(self, token: str) -> Optional[Dict[str, Any]]:
+        return await self._verify_token(token, "refresh", self.refresh_secret)
+
+    async def _verify_token(
+        self,
+        token: str,
+        expected_type: str,
+        secret: str,
     ) -> Dict[str, Any]:
         try:
-            secret = (
-                self.access_secret if token_type == "access" else self.refresh_secret
-            )
-
             payload = jwt.decode(token, secret, algorithms=[self.algorithm])
 
-            if payload.get("type") != token_type:
-                raise TokenError("Invalid token type")
-
-            exp = payload.get("exp")
-            if not exp or datetime.fromtimestamp(exp) < datetime.utcnow():
-                raise TokenError("Token has expired")
+            if payload.get("type") != expected_type:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail=f"Invalid token type. Expected {expected_type}",
+                )
 
             return payload
 
-        except JWTError as jwt_e:
-            credentials_exception = HTTPException(
+        except jwt.ExpiredSignatureError:
+            raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail=f"Could not validate credentials: {str(jwt_e)}",
-                headers={"WWW-Authenticate": "Bearer"},
+                detail="Expired token",
             )
-            raise credentials_exception
 
-        except TokenError as token_e:
-            credentials_exception = HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail=str(token_e),
-                headers={"WWW-Authenticate": "Bearer"},
+        except jwt.InvalidTokenError as e:
+            raise HTTPException(
+                 status_code=status.HTTP_401_UNAUTHORIZED,
+                 detail=f"Invalid token: {str(e)}"
             )
-            raise credentials_exception
 
     async def refresh_token(
-        self, refresh_token: str, db: AsyncSession
+        self,
+        refresh_token: str
     ) -> Dict[str, str]:
-        try:
-            db_manager = DBManager(session=db)
+        payload = await self.verify_refresh_token(refresh_token)
+        user_data = payload.get("user_info")
 
-            payload = await self.verify_token(refresh_token, "refresh")
-            user_data = payload.get("user_info")
+        if not user_data:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=f"No user data"
+            )
 
-            if not user_data:
-                raise TokenError("Invalid token data")
-            print(user_data)
+        user_email = user_data.get("email")
+        user = await self.user_service.find_user_by_email(user_email)
 
-            # Проверяем пользователя в БД
-            user = await db_manager.get_user_by_email(user_data["email"])
-            print(user.id)
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=f"No such user: {user_email}"
+            )
 
-            if not user:
-                print("not user")
-                raise TokenError("User not found")
-                # Создаем новую информацию для токенов
-                active_sub = await db_manager.get_active_sub(user
-            user_id = user.id
-            user_name = user.first_name + " " + user.last_name
-            user_email = user.email
+            active_sub = await db_manager.get_active_sub(user
+        user_id = user.id
+        user_name = user.first_name + " " + user.last_name
+        user_email = user.email
 
-         _id=user_id)
+     _id=user_id)
 
-            active_sub_dict = {"plan": "No active sub"}
+        active_sub_dict = {"plan": "No active sub"}
 
-            if active_sub:
-                active_sub_dict["plan"] = active_sub.plan
+        if active_sub:
+            active_sub_dict["plan"] = active_sub.plan
 
-            new_data = {
-                "user_info": {
-                    "id": user_id,
-                    "name": user_name,
-                    "email": user_email,
-                },
-                "subscription_info": {**active_sub_dict},
-            }
+        new_data = {
+            "user_info": {
+                "id": user_id,
+                "name": user_name,
+                "email": user_email,
+            },
+            "subscription_info": {**active_sub_dict},
+        }
 
-            # Создаем новую пару токенов
-            new_access_token = await self.create_access_token(new_data)
-            new_refresh_token = await self.create_refresh_token(new_data)
+        new_access_token = await self.create_access_token(new_data)
+        new_refresh_token = await self.create_refresh_token(new_data)
 
-            return {
-                "access_token": new_access_token,
-                "refresh_token": new_refresh_token,
-                "token_type": "Bearer",
-            }
+        return {
+            "access_token": new_access_token,
+            "refresh_token": new_refresh_token,
+            "token_type": "Bearer",
+        }
 
         except TokenError as e:
             print(str(e))
@@ -126,10 +135,4 @@ class JwtService:
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail=str(e),
                 headers={"WWW-Authenticate": "Bearer"},
-            )
-        except Exception as e:
-            print(str(e))
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Error refreshing token: {str(e)}",
             )

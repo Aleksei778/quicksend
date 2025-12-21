@@ -4,7 +4,7 @@ from datetime import date
 from fastapi_users import schemas
 
 
-class UserCreate(schemas.BaseUserCreate, BaseModel):
+class UserCreate(BaseModel):
     email: EmailStr
     first_name: Optional[str] = None
     last_name: Optional[str] = None

@@ -59,3 +59,5 @@ class SubscriptionService:
                 return False, CantSendEmailsReasons.LIMIT_EXCEEDED
 
             return True, CantSendEmailsReasons.CAN_SEND_EMAILS
+
+    async def build_subscription_data_for_jwt(self) -> :

@@ -1,0 +1,2 @@
+class JwtTokenVerificationFailedException(Exception):
+    pass
