@@ -10,7 +10,7 @@ from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import relationship
 
 from db.base import Base
-from core.security import decrypt, encrypt
+from utils.security import decrypt, encrypt
 
 
 class GoogleToken(Base):

@@ -19,13 +19,6 @@ SECRET_FOR_MANAGER = os.getenv("SECRET_FOR_MANAGER")
 SESSION_SECRET_KEY = os.getenv("SESSION_SECRET_KEY")
 BASE_URL = os.getenv("BASE_URL")
 
-TINKOFF_TERMINAL_KEY = os.getenv("TINKOFF_TERMINAL_KEY")
-TINKOFF_SECRET_KEY = os.getenv("TINKOFF_SECRET_KEY")
-
-PAYPAL_CLIENT_ID = os.getenv("PAYPAL_CLIENT_ID")
-PAYPAL_CLIENT_SECRET = os.getenv("PAYPAL_CLIENT_SECRET")
-PAYPAL_WEBHOOK_ID = os.getenv("PAYPAL_WEBHOOK_ID")
-
 YOOKASSA_SHOP_ID = os.getenv("YOOKASSA_SHOP_ID")
 YOOKASSA_SECRET_KEY = os.getenv("YOOKASSA_SECRET_KEY")
 
@@ -33,7 +26,6 @@ CORS_ORIGINS = [
     "http://127.0.0.1:8000",
     "chrome-extension://fekaiggohacnhgaleajohgpipbmbiaca",
     "https://f069-78-30-229-174.ngrok-free.app",
-    "https://mail.google.com",
 ]
 
 ENCRYPTION_KEY = os.environ.get("ENCRYPTION_KEY")

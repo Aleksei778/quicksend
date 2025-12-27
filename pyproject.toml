@@ -24,4 +24,8 @@ dependencies = [
     "sqlalchemy>=2.0.44",
     "sqlalchemy-utils>=0.42.0",
     "uvicorn[standard]>=0.38.0",
+    "fastapi-intelligent-cache>=0.1.4",
+    "redis>=7.0.1",
+    "httpx>=0.28.1",
+    "yookassa>=3.9.0",
 ]

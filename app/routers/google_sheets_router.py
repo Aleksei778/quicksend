@@ -11,5 +11,4 @@ sheets_router = routing.APIRouter(prefix="/sheets", tags=["sheets"])
 async def parse_emails_from_google_sheets(
     request: ParseEmailsRequest,
     current_user: User = Depends(get_current_user),
-
 ) -> ParseEmailsResponse:

@@ -10,14 +10,18 @@ from config import (
     ACCESS_TOKEN_EXPIRES_MINUTES,
     REFRESH_TOKEN_EXPIRES_DAYS
 )
+from services.subscription_service import SubscriptionService
 from services.user_service import UserService
+from logger import logger
 
 
 class JwtService:
-    def __init__(self, user_service: UserService):
+    def __init__(self, user_service: UserService, subscription_service: SubscriptionService):
         self.access_secret = JWT_ACCESS_SECRET_FOR_AUTH
         self.refresh_secret = JWT_REFRESH_SECRET_FOR_AUTH
         self.algorithm = JWT_ALGORITHM
+
+        self.subscription_service = subscription_service
         self.user_service = user_service
 
     async def create_access_token(self, user_data: Dict[str, Any]) -> str:
@@ -85,6 +89,8 @@ class JwtService:
         user_data = payload.get("user_info")
 
         if not user_data:
+            logger.info(f'No user data {user_data}')
+
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail=f"No user data"
@@ -94,17 +100,17 @@ class JwtService:
         user = await self.user_service.find_user_by_email(user_email)
 
         if not user:
+            logger.info(f'No user for email {user_email}')
+
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail=f"No such user: {user_email}"
             )
 
-            active_sub = await db_manager.get_active_sub(user
+        active_sub = await self.subscription_service.get_user_active_sub(user)
         user_id = user.id
         user_name = user.first_name + " " + user.last_name
         user_email = user.email
-
-     _id=user_id)
 
         active_sub_dict = {"plan": "No active sub"}
 
@@ -128,11 +134,3 @@ class JwtService:
             "refresh_token": new_refresh_token,
             "token_type": "Bearer",
         }
-
-        except TokenError as e:
-            print(str(e))
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail=str(e),
-                headers={"WWW-Authenticate": "Bearer"},
-            )

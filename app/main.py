@@ -2,44 +2,27 @@ from typing import Callable
 
 from fastapi import FastAPI, APIRouter, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi_cache import FastAPICache
-from fastapi_cache.backends.redis import RedisBackend
 from contextlib import asynccontextmanager
 from redis import asyncio as aioredis
 import uvicorn
-from aiokafka.admin import AIOKafkaAdminClient, NewTopic
-from aiokafka.errors import TopicAlreadyExistsError, KafkaError
-from elasticsearch import Elasticsearch
 from datetime import datetime
 import logging
-from starlette.middleware.sessions import SessionMiddleware
 
 from auth.google_auth import auth_router
 from subpay.subscriptions import subscription_router
 from config import (
-    SESSION_SECRET_KEY,
-    KAFKA_BASE_CONFIG,
-    KAFKA_TOPIC,
-    KAFKA_NUM_PARTITIONS,
-    KAFKA_REPLICATION_FACTOR,
     CORS_ORIGINS,
 )
 from utils.google_sheets import sheets_router
 from subpay.yookassa import payment_router
-from send import send_router
-from logger import logger
-
-# ---- ВСЕ НАСТРОЙКИ ПРИЛОЖЕНИЯ ----
 
 
-
-
-# Инициализация REDIS
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     redis = aioredis.from_url(
         "redis://localhost", encoding="utf8", decode_responses=True
     )
+
 
     # Инициализация кеша после создания Redis соединения
     FastAPICache.init(RedisBackend(redis), prefix="fastapi-cache")
@@ -136,8 +119,6 @@ app.add_middleware(
         "accept",
     ],
 )
-
-app.add_middleware(SessionMiddleware, secret_key=SESSION_SECRET_KEY)
 
 api_router = APIRouter(prefix="/api/v1")
 

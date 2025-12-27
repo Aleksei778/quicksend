@@ -1,7 +1,6 @@
-FROM nginx:stable-alpine
+FROM nginx:1.29.0
 
 COPY ./docker/nginx/nginx.conf /etc/nginx/nginx.conf
-COPY ./docker/nginx/prod/conf.d/ /etc/nginx/conf.d/
 
 RUN chown -R nginx:nginx /etc/nginx/
 

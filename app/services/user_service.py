@@ -5,6 +5,7 @@ from models.user import User
 from models.subscription import Subscription
 from schemas.user_schema import UserCreate
 
+
 class UserService:
     def __init__(self, db: AsyncSession):
         self.db = db
@@ -48,7 +49,3 @@ class UserService:
                 return True
 
         return False
-
-    async build_data_for_jwt_token() -> Dict:
-
-

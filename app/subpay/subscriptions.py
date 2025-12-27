@@ -5,9 +5,10 @@ from datetime import datetime
 import asyncio
 
 from celery_conf import celery_app
-from database.db_manager import DBManager
-from database.session import get_db, get_db2
-from database.models import UserOrm, SubscriptionOrm
+from db.db_manager import DBManager
+from db.session import get_db, get_db2
+from models.user import User
+
 from auth.dependencies import get_current_user
 
 # --- РОУТЕР ПОДПИСОК ---
