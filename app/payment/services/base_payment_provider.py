@@ -5,6 +5,7 @@ from decimal import Decimal
 from payment.enum.currency import Currency
 from payment.schema.payment_status import PaymentStatus
 from payment.schema.payment_result import PaymentResult
+from payment.schema.refund_result import RefundResult
 
 
 class PaymentGateway(ABC):
