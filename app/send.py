@@ -8,8 +8,8 @@ from celery_conf import send_campaign
 from pytz import timezone
 
 from utils.send_emails_kafka import mass_email_campaign, prepare_attachment_for_gmail
-from database.session import get_db
-from database.db_manager import DBManager
+from common.database import get_db
+from common.database import DBManager
 from auth.dependencies import get_current_user
 
 # --- MOSCOW TIMEZONE ---

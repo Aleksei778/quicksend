@@ -1,6 +1,6 @@
 from celery import Celery
 
-from config import celery_url
+from common.config import celery_url
 
 app = Celery('emailer', broker='amqp://rabbitmq:5672')
 

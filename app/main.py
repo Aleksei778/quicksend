@@ -6,15 +6,14 @@ from contextlib import asynccontextmanager
 from redis import asyncio as aioredis
 import uvicorn
 from datetime import datetime
-import logging
 
-from auth.google_auth import auth_router
+from google.auth.routes.google_auth import auth_router
 from subpay.subscriptions import subscription_router
-from config import (
+from common.config import (
     CORS_ORIGINS,
 )
-from utils.google_sheets import sheets_router
-from subpay.yookassa import payment_router
+from google.sheet.routes.sheet_router import sheets_router
+from payments.routes.payment_routes import router as payment_router
 
 
 @asynccontextmanager
@@ -120,7 +119,7 @@ app.add_middleware(
     ],
 )
 
-api_router = APIRouter(prefix="/api/v1")
+api_router = APIRouter(prefix="api", tags=["Api"])
 
 # ---- РОУТЕРЫ ----
 api_router.include_router(send_router)
@@ -130,6 +129,5 @@ api_router.include_router(payment_router)
 api_router.include_router(sheets_router)
 app.include_router(api_router)
 
-# ---- ЗАПУСК ПРИЛОЖЕНИЯ ----
 if __name__ == "__main__":
     uvicorn.run("main:app", port=8000, reload=True)
