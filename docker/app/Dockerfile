@@ -1,21 +1,23 @@
 FROM python:3.11-slim
 
-# Устанавливаем рабочую директорию в контейнере
 WORKDIR /app
 
-# Копируем и устанавливаем зависимости
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir uv
 
-# Копируем код приложения
-COPY ./app/ ./app/
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    vim \
+    && rm -rf /var/lib/apt/lists/*
 
-# Копируем консумеры
-COPY ./consumer/ ./consumer/
+COPY pyproject.toml uv.lock ./
 
-# Копируем миграции
-COPY ./alembic.ini ./
-COPY ./migrations/ ./migrations/
+RUN uv pip install --system -r pyproject.toml
 
-# Запускаем приложение через uvicorn
+COPY . .
+
+ENV PYTHONPATH=/app \
+    PYTHONUNBUFFERED=1
+
+EXPOSE 8000
+
 CMD ["python", "app/main.py"]

@@ -9,9 +9,9 @@ from sqlalchemy.future import select
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "app"))
 
-from database.session import get_db2
+from common.database import get_db2
 from google_token_file import get_gmail_service
-from database.models import UserOrm
+from common.database import UserOrm
 from consumer_config import KAFKA_CONSUMER_CONFIG, KAFKA_TOPIC
 
 # Логирование

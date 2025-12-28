@@ -1,44 +1,27 @@
-from fastapi import FastAPI, APIRouter, Request
+from typing import Callable
+
+from fastapi import FastAPI, APIRouter, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi_cache import FastAPICache
-from fastapi_cache.backends.redis import RedisBackend
 from contextlib import asynccontextmanager
 from redis import asyncio as aioredis
 import uvicorn
-from aiokafka.admin import AIOKafkaAdminClient, NewTopic
-from aiokafka.errors import TopicAlreadyExistsError, KafkaError
-from elasticsearch import Elasticsearch
 from datetime import datetime
-import logging
-from starlette.middleware.sessions import SessionMiddleware
 
-from auth.google_auth import auth_router
+from google.auth.routes.google_auth import auth_router
 from subpay.subscriptions import subscription_router
-from config import (
-    SESSION_SECRET_KEY,
-    KAFKA_BASE_CONFIG,
-    KAFKA_TOPIC,
-    KAFKA_NUM_PARTITIONS,
-    KAFKA_REPLICATION_FACTOR,
+from common.config import (
     CORS_ORIGINS,
 )
-from utils.google_sheets import sheets_router
-from subpay.yookassa import payment_router
-from send import send_router
-
-# ---- ВСЕ НАСТРОЙКИ ПРИЛОЖЕНИЯ ----
-
-# Настройка логирования
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+from google.sheet.routes.sheet_router import sheets_router
+from payments.routes.payment_routes import router as payment_router
 
 
-# Инициализация REDIS
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     redis = aioredis.from_url(
         "redis://localhost", encoding="utf8", decode_responses=True
     )
+
 
     # Инициализация кеша после создания Redis соединения
     FastAPICache.init(RedisBackend(redis), prefix="fastapi-cache")
@@ -50,6 +33,23 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
+@app.middleware("http")
+async def log_requests(request: Request, call_next: Callable) -> Response:
+    start_time = datetime.utcnow()
+    response = await call_next(request)
+    end_time = datetime.utcnow()
+
+    log_data = {
+        "timestamp": start_time.isoformat(),
+        "method": request.method,
+        "path": request.url.path,
+        "status_code": response.status_code,
+        "duration_ms": (end_time - start_time).total_seconds() * 1000,
+    }
+
+    logger.info(log_data)
+
+    return response
 
 async def create_kafka_topic():
     admin_client = AIOKafkaAdminClient(**KAFKA_BASE_CONFIG)
@@ -119,42 +119,7 @@ app.add_middleware(
     ],
 )
 
-app.add_middleware(SessionMiddleware, secret_key=SESSION_SECRET_KEY)
-
-es = Elasticsearch(
-    "http://localhost:9200", headers={"Content-Type": "application/json"}
-)
-
-
-@app.middleware("http")
-async def log_requests(request: Request, call_next):
-    start_time = datetime.utcnow()
-    response = await call_next(request)
-    end_time = datetime.utcnow()
-
-    log_data = {
-        "timestamp": start_time.isoformat(),
-        "method": request.method,
-        "path": request.url.path,
-        "status_code": response.status_code,
-        "duration_ms": (end_time - start_time).total_seconds() * 1000,
-    }
-
-    # Отправка логов в Elasticsearch, используем body вместо document
-    try:
-        es.index(
-            index="fastapi-logs",
-            body=log_data,  # Заменили document на body
-            headers={"Content-Type": "application/json"},
-        )
-        logger.info(f"Log successfully sent to Elasticsearch: {log_data}")
-    except Exception as e:
-        logger.error(f"Failed to send logs to Elasticsearch: {e}")
-
-    return response
-
-
-api_router = APIRouter(prefix="/api/v1")
+api_router = APIRouter(prefix="api", tags=["Api"])
 
 # ---- РОУТЕРЫ ----
 api_router.include_router(send_router)
@@ -164,6 +129,5 @@ api_router.include_router(payment_router)
 api_router.include_router(sheets_router)
 app.include_router(api_router)
 
-# ---- ЗАПУСК ПРИЛОЖЕНИЯ ----
 if __name__ == "__main__":
     uvicorn.run("main:app", port=8000, reload=True)

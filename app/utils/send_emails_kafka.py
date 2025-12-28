@@ -10,7 +10,7 @@ import json
 from email.encoders import encode_base64
 from fastapi import UploadFile
 
-from config import KAFKA_TOPIC, KAFKA_PRODUCER_CONFIG
+from common.config import KAFKA_TOPIC, KAFKA_PRODUCER_CONFIG
 
 
 def setup_logging():
