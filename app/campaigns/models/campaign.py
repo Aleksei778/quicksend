@@ -12,7 +12,7 @@ from sqlalchemy import (
 from datetime import datetime
 
 from common.database import Base
-from enums.campaing_status import CampaignStatus
+from campaigns.enum.campaign_status import CampaignStatus
 
 
 class Campaign(Base):

@@ -11,9 +11,9 @@ class CampaignService:
         self.db = db
 
     async def get_recipients_count_by_date_for_user(
-            self,
-            user: User,
-            camp_date: date
+        self,
+        user: User,
+        camp_date: date
     ) -> int:
         result = await self.db.execute(
             func.sum(Campaign.recipients)

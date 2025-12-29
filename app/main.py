@@ -119,14 +119,14 @@ app.add_middleware(
     ],
 )
 
-api_router = APIRouter(prefix="api", tags=["Api"])
+api_router = APIRouter(prefix="/api", tags=["Api"])
 
 # ---- РОУТЕРЫ ----
-api_router.include_router(send_router)
 api_router.include_router(auth_router)
 api_router.include_router(subscription_router)
 api_router.include_router(payment_router)
 api_router.include_router(sheets_router)
+
 app.include_router(api_router)
 
 if __name__ == "__main__":

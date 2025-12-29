@@ -1,6 +1,6 @@
 from datetime import date
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import List, Tuple
+from typing import List, Tuple, Dict
 
 from users.models.user import User
 from subscriptions.models.subscription import Subscription
@@ -20,6 +20,15 @@ class SubscriptionService:
                 return True
 
         return False
+
+    async def get_subscription_info_for_jwt(self, user: User) -> Dict[str, str]:
+        active_sub = await self.get_user_active_sub(user)
+        subscription_info = {"plan": "No active subscription"}
+
+        if active_sub:
+            subscription_info["plan"] = active_sub.plan
+
+        return subscription_info
 
     async def get_user_subs(self, user: User) -> List[Subscription] | None:
         return user.subscriptions

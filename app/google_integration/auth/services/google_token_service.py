@@ -1,3 +1,4 @@
+from fastapi import Depends
 from sqlalchemy.future import select
 from datetime import datetime, timedelta
 import httpx
@@ -5,11 +6,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import update
 
 from common.config import GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET
-from common.database import UserOrm, TokenOrm
+from users.services.user_service import UserService
+from users.models.user import User
+from google_integration.auth.models.google_token import GoogleToken
 
 
 class GoogleTokenService:
-    def __init__(self, db: AsyncSession):
+    def __init__(
+        self,
+        db: AsyncSession = Depends(AsyncSession),
+        user_service: UserService = Depends(UserService),
+    ):
         self.db = db
 
     async def get_google_token_for_user(self, user_id: int) -> GoogleToken:
@@ -72,17 +79,15 @@ class GoogleTokenService:
                                + timedelta(seconds=new_token_data["expires_in"]),
                 )
             )
-            print("НЕТ ОШИБКИ ТРЕТИЙ  3")
             await db.execute(stmt)
-            print("НЕТ ОШИБКИ ЧЕТВЕРТЫЙ  4")
             await db.commit()
-            print("НЕТ ОШИБКИ ПЯТЫЙ  5")
             return new_token_data["access_token"]
 
         except httpx.HTTPError as e:
             await db.rollback()
+
             raise Exception(f"Failed to refresh token: {str(e)}")
         except Exception as e:
             await db.rollback()
-            raise Exception(f"Unexpected error while refreshing token: {str(e)}")
 
+            raise Exception(f"Unexpected error while refreshing token: {str(e)}")

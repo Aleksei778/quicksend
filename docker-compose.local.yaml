@@ -69,6 +69,21 @@ services:
       default:
         ipv4_address: 172.70.0.6
 
+  seq:
+    image: datalust/seq:2025.2
+    container_name: quicksend_seq
+    environment:
+      ACCEPT_EULA: Y
+      SEQ_FIRSTRUN_ADMINUSERNAME: "${SEQ_FIRSTRUN_ADMINUSERNAME}"
+      SEQ_FIRSTRUN_ADMINPASSWORD: "${SEQ_FIRSTRUN_ADMINPASSWORD}"
+    ports:
+      - "5431:80"
+    volumes:
+      - seq_data:/data
+    networks:
+      default:
+        ipv4_address: 172.70.0.7
+
 networks:
   default:
     name: ${DOCKER_NETWORK}
@@ -78,3 +93,4 @@ volumes:
   redis_data:
   postgres_data:
   rabbitmq_data:
+  seq_data:

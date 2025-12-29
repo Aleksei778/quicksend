@@ -6,38 +6,13 @@ from authlib.integrations.starlette_client import OAuth
 from datetime import datetime
 
 from common.database import get_db
-from common.database import DBManager
-from auth.dependencies import get_current_user
-from auth.jwt_auth import (
-    create_access_token,
-    verify_token,
-    refresh_jwt_token,
-    create_refresh_token,
-)
-from google_token_file import refresh_access_token, is_token_expired
+from users.dependencies.get_current_user import get_current_user
 from common.config import BASE_URL, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET
 
-auth_router = APIRouter()
-
-oauth = OAuth()
-CONF_URL = "https://accounts.google.com/.well-known/openid-configuration"
-oauth.register(
-    name="google",
-    client_id=GOOGLE_CLIENT_ID,
-    client_secret=GOOGLE_CLIENT_SECRET,
-    authorize_url="https://accounts.google.com/o/oauth2/auth",
-    authorize_params=None,
-    access_token_url="https://accounts.google.com/o/oauth2/token",
-    access_token_params=None,
-    client_kwargs={
-        "scope": "email profile https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/spreadsheets.readonly",
-        "redirect_uri": f"{BASE_URL}/api/v1/oauth2callback",
-    },
-    server_metadata_url=CONF_URL,
-)
+google_auth_router = APIRouter(name)
 
 
-@auth_router.get("/login")
+@google_auth_router.get("/login")
 async def login(request: Request):
     google = oauth.create_client("google")
     redirect_uri = request.url_for("oauth2callback")
@@ -46,7 +21,7 @@ async def login(request: Request):
     )
 
 
-@auth_router.get("/oauth2callback", name="oauth2callback")
+@google_auth_router.get("/oauth2callback", name="oauth2callback")
 async def auth(request: Request, db: AsyncSession = Depends(get_db)):
     google = oauth.create_client("google")
     token_data = await google.authorize_access_token(request)

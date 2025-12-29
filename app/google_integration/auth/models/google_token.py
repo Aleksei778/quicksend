@@ -10,7 +10,7 @@ from sqlalchemy import (
     DateTime,
 )
 
-from common.database.base import Base
+from common.database import Base
 from common.security import decrypt, encrypt
 
 
