@@ -1,19 +1,21 @@
+from typing import Dict
+
 from pydantic import EmailStr
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from users.models.user import User
-from users.schemas.find_or_create import FindOrCreate
+from users.schemas.find_or_create_user import FindOrCreateUser
 
 
 class UserService:
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    async def find_or_create_user(self, find_or_create_dto: FindOrCreate) -> User:
+    async def find_or_create_user(self, find_or_create_dto: FindOrCreateUser) -> User:
         user = await self.find_by_email(email=find_or_create_dto.email)
 
         if not user:
-            user = await self._create(FindOrCreate(
+            user = await self._create(FindOrCreateUser(
                 email=find_or_create_dto.email,
                 first_name=find_or_create_dto.first_name,
                 last_name=find_or_create_dto.last_name,
@@ -24,7 +26,7 @@ class UserService:
 
         return user
 
-    async def _create(self, find_or_create_dto: FindOrCreate) -> User:
+    async def _create(self, find_or_create_dto: FindOrCreateUser) -> User:
         user = User(
             email=find_or_create_dto.email,
             first_name=find_or_create_dto.first_name,
@@ -45,3 +47,11 @@ class UserService:
 
     async def find_by_email(self, email: EmailStr) -> User | None:
         return await self.db.get(User, email)
+
+    async def get_user_info_for_jwt(self, user: User) -> Dict[str, str]:
+        return {
+            "id": user.id,
+            "first_name": user.first_name,
+            "last_name": user.last_name,
+            "email": user.email
+        }

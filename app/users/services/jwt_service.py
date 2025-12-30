@@ -3,13 +3,7 @@ import jwt
 from typing import Dict, Any, Optional
 from fastapi import HTTPException, status
 
-from common.config import (
-    JWT_ACCESS_SECRET_FOR_AUTH,
-    JWT_REFRESH_SECRET_FOR_AUTH,
-    JWT_ALGORITHM,
-    ACCESS_TOKEN_EXPIRES_MINUTES,
-    REFRESH_TOKEN_EXPIRES_DAYS
-)
+from users.config.jwt_config import
 from subscriptions.services.subscription_service import SubscriptionService
 from users.services.user_service import UserService
 from common.logger import logger
@@ -134,3 +128,12 @@ class JwtService:
             "refresh_token": new_refresh_token,
             "token_type": "Bearer",
         }
+
+    async def create_jwt_pair_from_data() -> None:
+        data = {
+            "user_info": await
+            "subscription_info": {**subscription_info},
+        }
+
+        access_jwt_token = await create_access_token(data=data)
+        refresh_jwt_token = await create_refresh_token(data=data)

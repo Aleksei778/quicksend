@@ -3,7 +3,7 @@ from sqlalchemy import Column, Integer, String, DateTime
 from sqlalchemy_utils import EmailType
 from datetime import datetime
 
-from common.database.base import Base
+from common.database import Base
 
 
 class User(Base):

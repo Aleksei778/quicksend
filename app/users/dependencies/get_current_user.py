@@ -41,7 +41,7 @@ async def get_current_user(
                 headers={"WWW-Authenticate": "Bearer"},
             )
 
-        user = await user_service.find_by_id(id=user_id)
+        user = await user_service.find_by_id(user_id=user_id)
 
         if user is None:
             raise HTTPException(

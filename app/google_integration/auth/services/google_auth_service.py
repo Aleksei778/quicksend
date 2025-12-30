@@ -1,27 +1,21 @@
-from datetime import datetime
 from fastapi import Request, HTTPException, Depends
 from fastapi.responses import RedirectResponse
-from authlib.integrations.starlette_client import OAuth
 from google_auth_oauthlib.flow import Flow
-from google.oauth2.credentials import Credentials
-from googleapiclient.discovery import build, Resource
+from googleapiclient.discovery import build
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
 
 from common.logger import logger
 from google_integration.auth.services.google_token_service import GoogleTokenService
 from subscriptions.services.subscription_service import SubscriptionService
-from users.schemas.find_or_create import FindOrCreate
+from users.schemas.find_or_create_user import FindOrCreateUser
+from google_integration.auth.schemas.find_or_create_google_token import FindOrCreateGoogleToken
 from users.services.user_service import UserService
 from common.config import (
     GOOGLE_CLIENT_ID,
     GOOGLE_CLIENT_SECRET,
     GOOGLE_REDIRECT_URL,
     GOOGLE_AUTH_SCOPES,
-    GOOGLE_ACCESS_TOKEN_URL,
-    GOOGLE_AUTHORIZE_URL,
-    GOOGLE_CONFIGURATION_URL,
-    GOOGLE_USERINFO_URL
 )
 
 
@@ -105,7 +99,7 @@ class GoogleAuthService:
          .bind(user_info=user_info)
          .debug("User info retrieved"))
 
-        user = self.user_service.find_or_create_user(FindOrCreate(
+        user = await self.user_service.find_or_create_user(FindOrCreateUser(
             email=user_info.get("email"),
             first_name=user_info.get("given_name"),
             last_name=user_info.get("family_name"),
@@ -113,24 +107,17 @@ class GoogleAuthService:
             oauth_id=user_info.get("id"),
         ))
 
-        create_or_update_token_dto = GoogleTokenDto(
+        await self.google_token_service.create_or_update_token(FindOrCreateGoogleToken(
             user=user,
             access_token=credentials.token,
             refresh_token=credentials.refresh_token,
             token_type="Bearer",
-            expires_in=None,  # Вычисляется из expiry
+            expires_in=None,
             expires_at=credentials.expiry,
             scope=" ".join(credentials.scopes) if credentials.scopes else None,
-        )
-        google_token = self.google_token_service.create_or_update_token(create_or_update_token_dto)
+        ))
 
-        data = {
-            "user_info": {"id": user.id, "first_name": user.first_name, "last_name": user.last_name, "email": user.email},
-            "subscription_info": {**subscription_info},
-        }
 
-        access_jwt_token = await create_access_token(data=data)
-        refresh_jwt_token = await create_refresh_token(data=data)
 
         response = RedirectResponse("/")
 
