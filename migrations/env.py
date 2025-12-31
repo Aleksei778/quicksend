@@ -5,8 +5,8 @@ from sqlalchemy import pool
 
 from alembic import context
 
-from common.config import DB_HOST, DB_NAME, DB_PASS, DB_USER, DB_PORT
-from common.database import Base
+from common.config.base_config import DB_HOST, DB_NAME, DB_PASS, DB_USER, DB_PORT
+from common.db.database import Base
 
 config = context.config
 

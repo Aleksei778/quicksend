@@ -1,37 +1,38 @@
 from datetime import datetime, timedelta
 import jwt
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Tuple
 from fastapi import HTTPException, status
+from fastapi.responses import Response
 
-from users.config.jwt_config import
+from users.config.jwt_config import jwt_settings
 from subscriptions.services.subscription_service import SubscriptionService
 from users.services.user_service import UserService
-from common.logger import logger
+from common.log.logger import logger
 
 
 class JwtService:
     def __init__(self, user_service: UserService, subscription_service: SubscriptionService):
-        self.access_secret = JWT_ACCESS_SECRET_FOR_AUTH
-        self.refresh_secret = JWT_REFRESH_SECRET_FOR_AUTH
-        self.algorithm = JWT_ALGORITHM
+        self.access_secret = jwt_settings.JWT_ACCESS_SECRET_FOR_AUTH
+        self.refresh_secret = jwt_settings.JWT_REFRESH_SECRET_FOR_AUTH
+        self.algorithm = jwt_settings.JWT_ALGORITHM
 
         self.subscription_service = subscription_service
         self.user_service = user_service
 
     async def create_access_token(self, user_data: Dict[str, Any]) -> str:
         to_encode = user_data.copy()
-        expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRES_MINUTES)
+        expire = datetime.utcnow() + timedelta(minutes=jwt_settings.JWT_ACCESS_TOKEN_EXPIRES_MINUTES)
         to_encode.update({
             "exp": expire,
             "iat": datetime.utcnow(),
             "type": "access"
         })
 
-        return jwt.encode(to_encode, self.access_secret, self.algorithm)
+        return jwt.encode(to_encode, self.access_secret, algorithm=self.algorithm)
 
     async def create_refresh_token(self, user_data: Dict[str, Any]) -> str:
         to_encode = user_data.copy()
-        expire = datetime.utcnow() + timedelta(minutes=REFRESH_TOKEN_EXPIRES_DAYS)
+        expire = datetime.utcnow() + timedelta(minutes=jwt_settings.REFRESH_TOKEN_EXPIRES_DAYS)
         to_encode.update({
             "exp": expire,
             "iat": datetime.utcnow(),
@@ -75,10 +76,7 @@ class JwtService:
                  detail=f"Invalid token: {str(e)}"
             )
 
-    async def refresh_token(
-        self,
-        refresh_token: str
-    ) -> Dict[str, str]:
+    async def refresh_token(self, refresh_token: str) -> Dict[str, str]:
         payload = await self.verify_refresh_token(refresh_token)
         user_data = payload.get("user_info")
 
@@ -94,34 +92,13 @@ class JwtService:
         user = await self.user_service.find_by_email(user_email)
 
         if not user:
-            logger.info(f'No user for email {user_email}')
-
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail=f"No such user: {user_email}"
             )
 
-        active_sub = await self.subscription_service.get_user_active_sub(user)
-        user_id = user.id
-        user_name = user.first_name + " " + user.last_name
-        user_email = user.email
-
-        active_sub_dict = {"plan": "No active sub"}
-
-        if active_sub:
-            active_sub_dict["plan"] = active_sub.plan
-
-        new_data = {
-            "user_info": {
-                "id": user_id,
-                "name": user_name,
-                "email": user_email,
-            },
-            "subscription_info": {**active_sub_dict},
-        }
-
-        new_access_token = await self.create_access_token(new_data)
-        new_refresh_token = await self.create_refresh_token(new_data)
+        new_user_data = await self.user_service.get_user_info_for_jwt(user)
+        new_access_token, new_refresh_token = await self.create_jwt_pair_from_data(new_user_data)
 
         return {
             "access_token": new_access_token,
@@ -129,11 +106,54 @@ class JwtService:
             "token_type": "Bearer",
         }
 
-    async def create_jwt_pair_from_data() -> None:
-        data = {
-            "user_info": await
-            "subscription_info": {**subscription_info},
-        }
+    async def create_jwt_pair_from_data(self, data: dict) -> Tuple[str, str]:
+        access_jwt_token = await self.create_access_token(user_data=data)
+        refresh_jwt_token = await self.create_refresh_token(user_data=data)
 
-        access_jwt_token = await create_access_token(data=data)
-        refresh_jwt_token = await create_refresh_token(data=data)
+        return access_jwt_token, refresh_jwt_token
+
+    async def extract_token(self, token: str | None) -> Optional[str]:
+        if not token:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="No token provided"
+            )
+
+        try:
+            token_type, token = token.split(maxsplit=1)
+            if token_type.lower() != "bearer":
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Wrong token type"
+                )
+
+            return token
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Wrong token format"
+            )
+
+    async def set_tokens_cookie(
+            self,
+            response: Response,
+            access_token: str,
+            refresh_token: str
+    ) -> None:
+        response.set_cookie(
+            key="access_token",
+            value=f"Bearer {access_token}",
+            httponly=True,
+            secure=True,
+            samesite="strict",
+            max_age=1800,
+        )
+
+        response.set_cookie(
+            key="refresh_token",
+            value=f"Bearer {refresh_token}",
+            httponly=True,
+            secure=True,
+            samesite="strict",
+            max_age=604800,
+        )

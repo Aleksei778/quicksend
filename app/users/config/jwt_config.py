@@ -1,12 +1,16 @@
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-class PaymentSettings(BaseSettings):
-    YOOKASSA_SHOP_ID: str = ""
-    YOOKASSA_API_KEY: str = ""
+class JwtSettings(BaseSettings):
+    JWT_ALGORITHM = ""
+    JWT_ACCESS_SECRET_FOR_AUTH = ""
+    JWT_REFRESH_SECRET_FOR_AUTH = ""
+    JWT_ACCESS_TOKEN_EXPIRES_MINUTES = 30
+    JWT_REFRESH_TOKEN_EXPIRES_DAYS = 7
 
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+    )
 
-payment_settings = PaymentSettings()
+jwt_settings = JwtSettings()

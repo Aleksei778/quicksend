@@ -3,9 +3,9 @@ from googleapiclient.discovery import build, Resource
 from sqlalchemy.ext.asyncio import AsyncSession
 from google.oauth2.credentials import Credentials
 
-from common.database import get_db
+from common.db.database import get_db
 from google_integration.auth.models.google_token import GoogleToken
-from common.config import GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET
+from common.config.base_config import GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET
 
 
 class GoogleGmailService:

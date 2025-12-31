@@ -1,7 +1,7 @@
 from loguru import logger
 from seqlog import SeqLogHandler
 
-from common.config import SEQ_URL, SEQ_API_KEY
+from common.config.base_config import SEQ_URL, SEQ_API_KEY
 
 handler = SeqLogHandler(
     server_url=SEQ_URL,

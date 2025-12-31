@@ -11,7 +11,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import relationship
 
-from common.database.base import Base
+from common.db.database import Base
 from payments.enum.provider import PaymentProvider as PaymentProviderEnum
 from payments.enum.payment_status import PaymentStatus as PaymentStatusEnum
 from payments.enum.currency import Currency as CurrencyEnum

@@ -3,7 +3,7 @@ from payments.enum.provider import PaymentProvider
 from payments.services.yookassa_payment_provider import YookassaPaymentProvider
 
 from payments.config.payment_config import payment_settings
-from common.logger import logger
+from common.log.logger import logger
 
 
 class PaymentProviderFactory:

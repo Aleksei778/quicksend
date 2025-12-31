@@ -3,7 +3,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy_utils import EmailType
 from datetime import datetime
 
-from common.database import Base
+from common.db.database import Base
 
 
 class Recipient(Base):

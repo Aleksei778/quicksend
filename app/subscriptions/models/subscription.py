@@ -9,7 +9,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import relationship
 from datetime import datetime
 
-from common.database.base import Base
+from common.db.database import Base
 from subscriptions.enum.plan import SubscriptionPlan
 
 

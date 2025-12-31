@@ -3,8 +3,8 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials
 
 from users.services.user_service import UserService
-from common.security import security
-from common.logger import logger
+from common.security.security import security
+from common.log.logger import logger
 from users.services.jwt_service import JwtService
 from users.models.user import User
 

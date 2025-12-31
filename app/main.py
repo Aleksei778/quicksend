@@ -1,37 +1,17 @@
 from typing import Callable
-
 from fastapi import FastAPI, APIRouter, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
-from contextlib import asynccontextmanager
-from redis import asyncio as aioredis
 import uvicorn
 from datetime import datetime
 
-from google.auth.routes.google_auth import auth_router
-from subpay.subscriptions import subscription_router
-from common.config import (
-    CORS_ORIGINS,
-)
-from google.sheet.routes.sheet_router import sheets_router
+from google_integration.auth.routes.google_auth_routes import google_auth_router
+from users.routes.jwt_routes import jwt_router
 from payments.routes.payment_routes import router as payment_router
+from common.log.logger import logger
+from common.config.base_config import base_settings
 
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    redis = aioredis.from_url(
-        "redis://localhost", encoding="utf8", decode_responses=True
-    )
-
-
-    # Инициализация кеша после создания Redis соединения
-    FastAPICache.init(RedisBackend(redis), prefix="fastapi-cache")
-
-    await create_kafka_topic_with_check()
-
-    yield
-
-
-app = FastAPI(lifespan=lifespan)
+app = FastAPI()
 
 @app.middleware("http")
 async def log_requests(request: Request, call_next: Callable) -> Response:
@@ -51,62 +31,12 @@ async def log_requests(request: Request, call_next: Callable) -> Response:
 
     return response
 
-async def create_kafka_topic():
-    admin_client = AIOKafkaAdminClient(**KAFKA_BASE_CONFIG)
-
-    try:
-        await admin_client.start()
-
-        topic = NewTopic(
-            name=KAFKA_TOPIC,
-            num_partitions=KAFKA_NUM_PARTITIONS,
-            replication_factor=KAFKA_REPLICATION_FACTOR,
-        )
-
-        await admin_client.create_topics([topic])
-
-        logger.info(f"Created topic {KAFKA_TOPIC}")
-    except TopicAlreadyExistsError:
-        logger.info(f"Topic {KAFKA_TOPIC} already exists")
-    except ValueError as ve:
-        logger.error(f"Ошибка преобразования типов: {ve}")
-    except KafkaError as ke:
-        logger.error(f"Ошибка при создании темы: {ke}")
-
-
-async def check_kafka_topic_exists(topic: str) -> bool:
-    admin_client = AIOKafkaAdminClient(**KAFKA_BASE_CONFIG)
-
-    try:
-        await admin_client.start()
-
-        metadata = await admin_client.describe_topics([topic])
-        return topic in metadata
-
-    except Exception as e:
-        logger.error(f"Ошибка при проверке существования темы kafka: {e}")
-        return False
-    finally:
-        await admin_client.close()
-
-
-async def create_kafka_topic_with_check():
-    try:
-        if await check_kafka_topic_exists(KAFKA_TOPIC):
-            logger.info(f"Kafka topic {KAFKA_TOPIC} already exists")
-            return
-
-        await create_kafka_topic()
-
-    except Exception as e:
-        logger.error(f"Ошибка при создании топика: {e}")
-        raise
-
-
-# CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=CORS_ORIGINS,
+    allow_origins=[
+        base_settings.FRONTEND_URL,
+        base_settings.CHROME_EXTENSION_URL,
+    ],
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=[
@@ -121,11 +51,9 @@ app.add_middleware(
 
 api_router = APIRouter(prefix="/api", tags=["Api"])
 
-# ---- РОУТЕРЫ ----
-api_router.include_router(auth_router)
-api_router.include_router(subscription_router)
+api_router.include_router(google_auth_router)
+api_router.include_router(jwt_router)
 api_router.include_router(payment_router)
-api_router.include_router(sheets_router)
 
 app.include_router(api_router)
 

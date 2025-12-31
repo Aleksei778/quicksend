@@ -1,6 +1,7 @@
 from typing import Dict
 
 from pydantic import EmailStr
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from users.models.user import User
@@ -46,12 +47,15 @@ class UserService:
         return await self.db.get(User, user_id)
 
     async def find_by_email(self, email: EmailStr) -> User | None:
-        return await self.db.get(User, email)
+        result = await self.db.execute(
+            select(User)
+            .where(User.email == email)
+        )
+
+        return result.scalar_one_or_none()
 
     async def get_user_info_for_jwt(self, user: User) -> Dict[str, str]:
         return {
             "id": user.id,
-            "first_name": user.first_name,
-            "last_name": user.last_name,
             "email": user.email
         }

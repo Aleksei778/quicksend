@@ -2,7 +2,7 @@ from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from google_token_file import get_sheets_service
-from common.database import User
+from common.db.database import User
 from schemas.google_sheets import EmailList, SheetRequest
 
 

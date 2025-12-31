@@ -11,7 +11,7 @@ from sqlalchemy import (
 )
 from datetime import datetime
 
-from common.database import Base
+from common.db.database import Base
 from campaigns.enum.campaign_status import CampaignStatus
 
 

@@ -7,7 +7,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import relationship
 
-from common.database import Base
+from common.db.database import Base
 
 
 class Attachment(Base):

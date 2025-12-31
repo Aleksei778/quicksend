@@ -29,4 +29,5 @@ dependencies = [
     "httpx>=0.28.1",
     "yookassa>=3.9.0",
     "seqlog>=0.4.3",
+    "pyjwt>=2.10.1",
 ]

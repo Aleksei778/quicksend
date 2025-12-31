@@ -1,12 +1,12 @@
 from fastapi.security import HTTPBearer
 from cryptography.fernet import Fernet
 
-from config import ENCRYPTION_KEY
+from common.config.base_config import base_settings
 
 
 security = HTTPBearer()
 
-key = ENCRYPTION_KEY.encode()
+key = base_settings.ENCRYPTION_KEY.encode()
 fernet = Fernet(key)
 
 def encrypt(value: str) -> str:
