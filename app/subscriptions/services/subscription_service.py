@@ -1,11 +1,9 @@
 from datetime import date
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import List, Tuple, Dict
 
 from users.models.user import User
 from subscriptions.models.subscription import Subscription
-from enums.cant_send_emails_reasons import CantSendEmailsReasons
-from enums.subscriptions_plans import SubscriptionPlans
+from subscriptions.enum.plan import SubscriptionPlan
 from campaigns.services.campaign_service import CampaignService
 
 
@@ -21,7 +19,7 @@ class SubscriptionService:
 
         return False
 
-    async def get_subscription_info_for_jwt(self, user: User) -> Dict[str, str]:
+    async def get_subscription_info_for_jwt(self, user: User) -> dict[str, str]:
         active_sub = await self.get_user_active_sub(user)
         subscription_info = {"plan": "No active subscription"}
 
@@ -30,7 +28,7 @@ class SubscriptionService:
 
         return subscription_info
 
-    async def get_user_subs(self, user: User) -> List[Subscription] | None:
+    async def get_user_subs(self, user: User) -> list[Subscription] | None:
         return user.subscriptions
 
     async def get_user_active_sub(self, user: User) -> Subscription | None:
@@ -44,14 +42,10 @@ class SubscriptionService:
         self,
         user: User,
         current_recipients_count: int
-    ) -> Tuple[bool, CantSendEmailsReasons]:
-            subs = await self.get_user_subs(user)
-            if not subs:
-                return False, CantSendEmailsReasons.NO_SUBSCRIPTIONS
-
+    ) -> tuple[bool, str]:
             subscription = await self.get_user_active_sub(user)
             if not subscription:
-                return False, CantSendEmailsReasons.NO_ACTIVE_SUBSCRIPTION
+                return False, "No active subscription"
 
             active_sub_plan = subscription.plan
             today = date.today()
@@ -59,12 +53,12 @@ class SubscriptionService:
             total_recipients = previous_recipients_count + current_recipients_count
 
             restrict_condition = (
-                total_recipients > 50 and active_sub_plan == SubscriptionPlans.TRIAL
+                total_recipients > 50 and active_sub_plan == SubscriptionPlan.TRIAL
             ) or (
-                total_recipients > 500 and active_sub_plan == SubscriptionPlans.STANDARD
+                total_recipients > 500 and active_sub_plan == SubscriptionPlan.STANDARD
             )
 
             if restrict_condition:
-                return False, CantSendEmailsReasons.LIMIT_EXCEEDED
+                return False, "Already used limits"
 
-            return True, CantSendEmailsReasons.CAN_SEND_EMAILS
+            return True

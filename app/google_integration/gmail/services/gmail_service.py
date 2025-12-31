@@ -5,23 +5,20 @@ from google.oauth2.credentials import Credentials
 
 from common.db.database import get_db
 from google_integration.auth.models.google_token import GoogleToken
-from common.config.base_config import GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET
+from common.config.base_config import base_settings
 
 
 class GoogleGmailService:
-    def __init__(
-        self,
-        db: AsyncSession = Depends(get_db),
-    ):
+    def __init__(self, db: AsyncSession = Depends(get_db)):
         self.db = db
 
-    async def _create_credentials(self, google_token: GoogleToken):
+    async def _create_credentials(self, google_token: GoogleToken) -> Credentials:
         return Credentials(
             token=google_token.access_token,
             refresh_token=google_token.refresh_token,
             token_uri="https://accounts.google.com/o/oauth2/token",
-            client_id=GOOGLE_CLIENT_ID,
-            client_secret=GOOGLE_CLIENT_SECRET,
+            client_id=base_settings.GOOGLE_CLIENT_ID,
+            client_secret=base_settings.GOOGLE_CLIENT_SECRET,
             scopes=["https://www.googleapis.com/auth/gmail.send"],
         )
 
