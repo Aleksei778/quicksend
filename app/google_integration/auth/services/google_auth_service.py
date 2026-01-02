@@ -18,7 +18,7 @@ from users.services.jwt_service import JwtService
 from users.services.user_service import UserService
 from common.db.database import get_db
 from common.config.base_config import base_settings
-from google_integration.auth.config.google_config import google_settings
+from google_integration.config.google_config import google_settings
 
 
 class GoogleAuthService:

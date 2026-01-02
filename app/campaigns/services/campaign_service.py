@@ -1,20 +1,23 @@
 import base64
 from email.encoders import encode_base64
 from email.header import Header
-from email.mime import multipart, text, image
+from email.mime import multipart, text, image, base
 from email.utils import make_msgid
+from typing import Annotated
+from fastapi import Depends
 from sqlalchemy import func, Date, cast
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import date
 
 from campaigns.models.campaign import Campaign
 from campaigns.schemas.create_message import CreateMessage
+from common.db.database import get_db
 from users.models.user import User
 from campaigns.config.campaign_config import campaign_settings
 
 
 class CampaignService:
-    def __init__(self, db: AsyncSession):
+    def __init__(self, db: Annotated[AsyncSession, Depends(get_db)],):
         self.db = db
 
     async def get_recipients_count_by_date_for_user(
@@ -32,7 +35,25 @@ class CampaignService:
 
         return total_count or 0
 
-    async def create_message_with_attachment(self, message: CreateMessage) -> None:
+    async def create_campaign(
+        self,
+        sender_name: str,
+        subject: str,
+        body_template: str
+    ) -> Campaign:
+        campaign = Campaign(
+            sender_name=sender_name,
+            subject=subject,
+            body_template=body_template,
+        )
+
+        self.db.add(campaign)
+        await self.db.commit()
+        await self.db.refresh(campaign)
+
+        return campaign
+
+    async def create_message_with_attachment(self, message: CreateMessage) -> str:
         msg = multipart.MIMEMultipart()
         msg["From"] = f"{message.sender_name} <{message.sender}>"
         msg["To"] = message.recipient
@@ -58,7 +79,7 @@ class CampaignService:
 
                 msg.attach(img_part)
 
-        for attachment in attachments:
+        for attachment in message.attachments:
             part = base.MIMEBase("application", "octet-stream")
 
             part.set_payload(base64.urlsafe_b64decode(attachment["data"]))
@@ -76,6 +97,4 @@ class CampaignService:
 
             msg.attach(part)
 
-        raw_msg = base64.urlsafe_b64encode(msg.as_bytes()).decode("utf-8")
-
-        return {"raw": raw_msg}
+        return base64.urlsafe_b64encode(msg.as_bytes()).decode("utf-8")

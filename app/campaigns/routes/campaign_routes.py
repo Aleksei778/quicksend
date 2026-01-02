@@ -1,14 +1,17 @@
 import json
 from typing import Annotated
-
 from fastapi import APIRouter, Depends, HTTPException, Form, UploadFile, File
 from starlette import status
+from starlette.responses import JSONResponse
 
+from campaigns.services.attachment_service import AttachmentService
 from subscriptions.services.subscription_service import SubscriptionService
 from users.dependencies.get_current_user import get_current_user
 from users.models.user import User
 
-campaign_router = APIRouter(name="/campaigns", tags=["Campaigns"])
+
+campaign_router = APIRouter(prefix="/campaigns", tags=["Campaigns"])
+
 
 @campaign_router.post("/start")
 async def start_campaign(
@@ -16,6 +19,7 @@ async def start_campaign(
     files: Annotated[list[UploadFile], File([])],
     current_user: Annotated[User, Depends(get_current_user)],
     subscription_service: Annotated[SubscriptionService, Depends()],
+    attachment_service: Annotated[AttachmentService, Depends()],
 ) -> None:
     campaign_data = json.loads(body) if body else {}
     recipients = campaign_data.get("recipients", [])
@@ -28,19 +32,14 @@ async def start_campaign(
             detail=message
         )
 
-    attachments = []
-    if files:
-        for file in files:
-            attachment_data = await prepare_attachment_for_gmail(file)
-            attachments.append(attachment_data)
-
-    print("Hello, run_campaign")
-    print(f"current_user: {current_user}")
+    for file in files:
+        prepared_attachment = await attachment_service.prepare_attachment_for_gmail(file)
+        attachments.append(prepared_attachment)
 
     sender_email = current_user.email
     sender_name = f"{current_user.first_name} {current_user.last_name}"
-    subject = campaign_data.get("subject", "")  # Добавляем значение по умолчанию
-    body_template = campaign_data.get("body", "")  # Добавляем значение по умолчанию
+    subject = campaign_data.get("subject", "")
+    body_template = campaign_data.get("body", "")
 
     prep_attachments = [
         {
@@ -118,57 +117,27 @@ async def start_campaign(
             }
         )
 
-@send_router.get("/all-campaigns")
+
+@campaign_router.get("/all")
 async def get_all_campaigns(
-    request: Request,
-    current_user=Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-):
-    db_manager = DBManager(session=db)
-
-    campaigns = await db_manager.get_all_campaigns(user_id=current_user.id)
-
-    new_campaigns = []
-    total_recipients = 0
-
-    for camp in campaigns:
-        new_camp = {}
-
-        recipients_list = camp.recipients.split(",")
-        attachment_files_list = camp.attachment_files.split(",")
-        date_str = camp.campaign_time.date().isoformat()
-        recipients_cnt = len(recipients_list)
-
-        total_recipients += recipients_cnt
-
-        new_camp["name"] = camp.subject
-        new_camp["date"] = date_str
-        new_camp["recipients_cnt"] = recipients_cnt
-        new_camp["attachments"] = attachment_files_list
-
-        new_campaigns.append(new_camp)
-
-    return {"campaigns": new_campaigns}
+    current_user: Annotated[User, Depends(get_current_user)],
+) -> JSONResponse:
+    return JSONResponse({
+        "campaigns": current_user.campaigns,
+    })
 
 
-@send_router.get("/campaigns-stat")
-async def get_camps_stat(
-    request: Request,
-    current_user=Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-):
-    db_manager = DBManager(session=db)
+@campaign_router.get("/statistics")
+async def get_campaigns_statistics(
+    current_user: Annotated[User, Depends(get_current_user)],
+) -> JSONResponse:
+    campaigns = current_user.campaigns
 
-    campaigns = await db_manager.get_all_campaigns(user_id=current_user.id)
+    recipients_count = 0
+    for campaign in campaigns:
+        recipients_count += len(campaign.recipients)
 
-    total_camps = len(campaigns)
-    total_resips = 0
-
-    for camp in campaigns:
-        recipients_list = camp.recipients.split(",")
-        recipients_cnt = len(recipients_list)
-
-        total_resips += recipients_cnt
-
-    return {"campaigns_count": total_camps, "recipients_count": total_resips}
-
+    return JSONResponse({
+        "campaigns_count": len(campaigns),
+        "recipients_count": len(recipients_count),
+    })

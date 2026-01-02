@@ -1,59 +1,62 @@
-from fastapi import HTTPException
+from typing import Any, Annotated
+from fastapi import HTTPException, Depends
+from googleapiclient.discovery import build
 from sqlalchemy.ext.asyncio import AsyncSession
+from google.oauth2.credentials import Credentials
+from starlette import status
 
-from google_token_file import get_sheets_service
-from common.db.database import User
-from schemas.google_sheets import EmailList, SheetRequest
+from common.db.database import get_db
+from google_integration.auth.models.google_token import GoogleToken
+from google_integration.config.google_config import google_settings
 
 
 class GoogleSheetsService:
-    def __init__(self, db: AsyncSession):
-        self.db: AsyncSession = db
+    def __init__(self, db: Annotated[AsyncSession, Depends(get_db)]):
+        self.db = db
 
-    async def get_sheets_google_service(user: UserOrm):
-        stmt = select(TokenOrm).where(TokenOrm.user_id == user.id)
-        result = await self.db.execute(stmt)
-        token = result.scalar_one_or_none()
-
-        if not token:
-            raise HTTPException(status_code=404, detail="Token not found")
-
-        if is_token_expired(token):
-            await refresh_access_token(token, db)
-
-        creds = Credentials(
-            token=token.access_token,
-            refresh_token=token.refresh_token,
-            token_uri="https://accounts.google.com/o/oauth2/token",
-            client_id=GOOGLE_CLIENT_ID,
-            client_secret=GOOGLE_CLIENT_SECRET,
+    async def _create_credentials(self, google_token: GoogleToken) -> Credentials:
+        return Credentials(
+            token=google_token.access_token,
+            refresh_token=google_token.refresh_token,
+            token_uri=google_settings.GOOGLE_TOKEN_URI,
+            client_id=google_settings.GOOGLE_CLIENT_ID,
+            client_secret=google_settings.GOOGLE_CLIENT_SECRET,
             scopes=["https://www.googleapis.com/auth/spreadsheets.readonly"],
         )
 
-        return build("sheets", "v4", credentials=creds)
+    async def get_google_sheets_service(self, google_token: GoogleToken) -> Any:
+        credentials = await self._create_credentials(google_token)
 
-    async def get_emails_from_spreadsheet(
+        return build(
+            serviceName="sheets",
+            version="v4",
+            credentials=credentials,
+        )
+
+    async def parse_emails_from_spreadsheet(
+        self,
         spreadsheet_id: str,
         range: str,
-        current_user: User,
+        google_token: GoogleToken,
     ):
         try:
-            sheets_service = await get_sheets_service(current_user)
+            sheets_service = await self.get_google_sheets_service(google_token)
+            spreadsheet_base = await sheets_service.spreadsheets().values()
 
             spreadsheet = (
-                sheets_service.spreadsheets()
+                spreadsheet_base
                 .get(spreadsheetId=spreadsheet_id)
                 .execute()
             )
 
             if not spreadsheet:
-                raise HTTPException(status_code=404, detail="No such spreadsheet")
-
-            spreadsheet_name = spreadsheet.get("properties", {}).get("title", "")
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"No such spreadsheet found {spreadsheet_id}"
+                )
 
             result = (
-                sheets_service.spreadsheets()
-                .values()
+                spreadsheet_base
                 .get(spreadsheetId=spreadsheet_id, range=range)
                 .execute()
             )
@@ -61,21 +64,36 @@ class GoogleSheetsService:
             values = result.get("values", [])
 
             if not values:
-                raise HTTPException(status_code=404, detail="No data found")
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"No data for spreadsheet {spreadsheet_id}"
+                )
 
             emails = [item[0] for item in values if item and "@" in item[0]]
 
-            email_list = EmailList(emails=emails, spreadsheet_name=spreadsheet_name)
-            email_list.remove_dups()
+            if not emails:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"No valid emails found in spreadsheet {spreadsheet_id}"
+                )
 
-            return email_list
+            return set(emails)
+        except HTTPException as e:
+            raise e
         except Exception as e:
-            print(str(e))
-            raise HTTPException(status_code=500, detail=str(e))
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Some problems while processing spreadsheet {spreadsheet_id}: {str(e)}"
+            )
 
-    async def get_spreadsheet_metadata(spreadsheet_id: str):
+    async def get_spreadsheet_metadata(
+        self,
+        spreadsheet_id: str,
+        google_token: GoogleToken,
+    ) -> dict:
         try:
-            sheets_service = await self.get_sheets_google_service(spreadsheet_id)
+            sheets_service = await self.get_google_sheets_service(google_token)
+
             spreadsheet = (
                 sheets_service.spreadsheets()
                 .get(spreadsheetId=spreadsheet_id)
@@ -83,6 +101,13 @@ class GoogleSheetsService:
             )
 
             sheets = spreadsheet.get("sheets", [])
+
+            if len(sheets) == 0:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"No sheets found for spreadsheet {spreadsheet_id}"
+                )
+
             sheet_names = [
                 {
                     "title": sheet["properties"]["title"],
@@ -97,4 +122,7 @@ class GoogleSheetsService:
             }
 
         except Exception as e:
-            raise HTTPException(status_code=500, detail=str(e))
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Some problems while processing spreadsheet {spreadsheet_id}: {str(e)}"
+            )

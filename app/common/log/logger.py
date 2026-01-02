@@ -1,11 +1,11 @@
 from loguru import logger
 from seqlog import SeqLogHandler
 
-from common.config.base_config import SEQ_URL, SEQ_API_KEY
+from common.config.base_config import base_settings
 
 handler = SeqLogHandler(
-    server_url=SEQ_URL,
-    api_key=SEQ_API_KEY,
+    server_url=base_settings.SEQ_URL,
+    api_key=base_settings.SEQ_API_KEY,
     batch_size=10,
     auto_flush_timeout=5
 )

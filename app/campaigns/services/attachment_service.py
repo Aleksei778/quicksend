@@ -10,6 +10,7 @@ from sqlalchemy import func, Date, cast
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import date
 
+from campaigns.models.attachment import Attachment
 from campaigns.models.campaign import Campaign
 from users.models.user import User
 
@@ -52,8 +53,8 @@ class AttachmentService:
         encoders.encode_base64(mimepart)
 
         mimepart.add_header(
-            'Content-Disposition',
-            f'attachment; filename="{encoded_filename}"',
+            _name='Content-Disposition',
+            _value=f'attachment; filename="{encoded_filename}"',
         )
         mimepart.add_header("Content-ID", f"<{filename}>")
 
@@ -65,3 +66,21 @@ class AttachmentService:
             "mime_part": mimepart,
             "encoded_content": base64.urlsafe_b64encode(content).decode("utf-8"),
         }
+
+    async def create_attachment(
+        self,
+        name: str,
+        size: int,
+        mimetype: str
+    ) -> Attachment:
+        attachment = Attachment(
+            name=name,
+            size=size,
+            mimetype=mimetype,
+        )
+
+        self.db.add(attachment)
+        await self.db.commit()
+        await self.db.refresh(attachment)
+
+        return attachment

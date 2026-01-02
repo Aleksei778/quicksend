@@ -47,18 +47,11 @@ class SubscriptionService:
             if not subscription:
                 return False, "No active subscription"
 
-            active_sub_plan = subscription.plan
             today = date.today()
             previous_recipients_count = await self.campaign_service.get_recipients_count_by_date_for_user(user, today)
             total_recipients = previous_recipients_count + current_recipients_count
 
-            restrict_condition = (
-                total_recipients > 50 and active_sub_plan == SubscriptionPlan.TRIAL
-            ) or (
-                total_recipients > 500 and active_sub_plan == SubscriptionPlan.STANDARD
-            )
-
-            if restrict_condition:
+            if total_recipients > SubscriptionPlan.get_recipients_limit(subscription.plan):
                 return False, "Already used limits"
 
-            return True
+            return True, ""

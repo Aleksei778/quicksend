@@ -1,63 +1,33 @@
-from pydantic import BaseModel
-from typing import List
+from typing import Annotated
 from fastapi import HTTPException, Depends, routing
-from sqlalchemy.ext.asyncio import AsyncSession
-from collections import OrderedDict
+
+from google_integration.auth.services.google_token_service import GoogleTokenService
+from google_integration.sheet.schemas.sheet_request import SheetRequest
+from google_integration.sheet.services.google_sheets_service import GoogleSheetsService
+from users.dependencies.get_current_user import get_current_user
+from users.models.user import User
 
 
-sheet_router = routing.APIRouter()
+google_sheets_router = routing.APIRouter(prefix="/sheets", tags=["sheets"])
 
 
-@sheets_router.post("/get-emails", response_model=EmailList)
-async def get_emails(
+@google_sheets_router.post("/parse")
+async def parse_emails_from_spreadsheet(
     request: SheetRequest,
-    current_user=Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_current_user)],
+    google_token_service: Annotated[GoogleTokenService, Depends()],
+    google_sheets_service: Annotated[GoogleSheetsService, Depends()],
 ):
-    try:
-        print(request.spreadsheet_id, request.range)
-        sheets_service = await get_sheets_service(current_user, db)
-        print("НЕТ ОШИБКИ")
-        # Получаем информацию о таблице
-        spreadsheet = (
-            sheets_service.spreadsheets()
-            .get(spreadsheetId=request.spreadsheet_id)
-            .execute()
-        )
+    google_token = await google_token_service.get_google_token_for_user(user=current_user)
 
-        if not spreadsheet:
-            raise HTTPException(status_code=404, detail="No such spreadsheet")
-
-        print("НЕТ ОШИБКИ2")
-        spreadsheet_name = spreadsheet.get("properties", {}).get("title", "")
-        print("НЕТ ОШИБКИ3")
-
-        # Получаем данные из указанного диапазона
-        result = (
-            sheets_service.spreadsheets()
-            .values()
-            .get(spreadsheetId=request.spreadsheet_id, range=request.range)
-            .execute()
-        )
-        print("НЕТ ОШИБКИ4")
-
-        values = result.get("values", [])
-        if not values:
-            raise HTTPException(status_code=404, detail="No data found")
-
-        # Извлекаем email адреса
-        emails = [item[0] for item in values if item and "@" in item[0]]
-
-        email_list = EmailList(emails=emails, spreadsheet_name=spreadsheet_name)
-        email_list.remove_dups()
-
-        return email_list
-    except Exception as e:
-        print(str(e))
-        raise HTTPException(status_code=500, detail=str(e))
+    return await google_sheets_service.parse_emails_from_spreadsheet(
+        spreadsheet_id=request.spreadsheet_id,
+        range=request.range,
+        google_token=google_token,
+    )
 
 
-@sheets_router.get("/{spreadsheet_id}/metadata")
+@google_sheets_router.get("/{spreadsheet_id}/metadata")
 async def get_sheet_metadata(spreadsheet_id: str):
     try:
         sheets_service = get_sheets_service()

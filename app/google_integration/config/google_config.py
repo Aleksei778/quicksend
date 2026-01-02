@@ -16,6 +16,7 @@ class GoogleSettings(BaseSettings):
     GOOGLE_USERINFO_URL: str = "https://www.googleapis.com/oauth2/v3/userinfo"
     GOOGLE_TOKEN_INFO_URL: str = "https://oauth2.googleapis.com/tokeninfo"
     GOOGLE_JWKS_URL: str = "https://www.googleapis.com/oauth2/v3/certs"
+    GOOGLE_TOKEN_URI: str = "https://accounts.google.com/o/oauth2/token"
 
     model_config = SettingsConfigDict(
         env_file=".env",

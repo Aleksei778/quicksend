@@ -6,7 +6,6 @@ class SubscriptionPlan(Enum):
     PREMIUM = "premium"
     TRIAL = "trial"
 
-    @property
     def get_recipients_limit(self) -> int:
         match self:
             case self.TRIAL:

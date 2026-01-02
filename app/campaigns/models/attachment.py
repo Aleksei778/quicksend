@@ -1,3 +1,5 @@
+from datetime import datetime
+from sqlalchemy.orm import relationship
 from sqlalchemy import (
     Integer,
     Column,
@@ -5,7 +7,6 @@ from sqlalchemy import (
     DateTime,
     ForeignKey,
 )
-from sqlalchemy.orm import relationship
 
 from common.db.database import Base
 
@@ -14,13 +15,11 @@ class Attachment(Base):
     __tablename__ = "attachments"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    filename = Column(String, nullable=False)
-    file_path = Column(String, nullable=False)
-    file_size = Column(Integer, nullable=False)
-    mime_type = Column(String, nullable=False)
-    uploaded_at = Column(DateTime, nullable=False)
-    s3_link = Column(String, nullable=False)
+    name = Column(String, nullable=False)
+    size = Column(Integer, nullable=False)
+    mimetype = Column(String, nullable=False)
+    uploaded_at = Column(DateTime, nullable=False, default=datetime.utcnow)
 
     campaign_id = Column(Integer, ForeignKey("campaigns.id"))
 
-    campaign = relationship("Campaign", back_populates="attachments")
+    campaign = relationship(argument="Campaign", back_populates="attachments")

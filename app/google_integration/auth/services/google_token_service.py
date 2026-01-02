@@ -5,15 +5,16 @@ from google_integration.auth.models.google_token import GoogleToken
 from google_integration.auth.schemas.find_or_create_google_token import FindOrCreateGoogleToken
 
 from common.db.database import get_db
+from users.models.user import User
 
 
 class GoogleTokenService:
     def __init__(self, db: AsyncSession = Depends(get_db)) -> None:
         self.db = db
 
-    async def get_google_token_for_user(self, user_id: int) -> GoogleToken | None:
+    async def get_google_token_for_user(self, user: User) -> GoogleToken | None:
         result = await self.db.execute(
-            select(GoogleToken).where(GoogleToken.user_id == user_id)
+            select(GoogleToken).where(GoogleToken.user_id == user.id)
         )
         return result.scalar_one_or_none()
 
