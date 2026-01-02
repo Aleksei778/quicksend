@@ -17,7 +17,7 @@ from campaigns.config.campaign_config import campaign_settings
 
 
 class CampaignService:
-    def __init__(self, db: Annotated[AsyncSession, Depends(get_db)],):
+    def __init__(self, db: Annotated[AsyncSession, Depends(get_db)]):
         self.db = db
 
     async def get_recipients_count_by_date_for_user(
@@ -35,8 +35,9 @@ class CampaignService:
 
         return total_count or 0
 
-    async def create_campaign(
+    async def create_campaign_for_user(
         self,
+        user: User,
         sender_name: str,
         subject: str,
         body_template: str
@@ -45,6 +46,7 @@ class CampaignService:
             sender_name=sender_name,
             subject=subject,
             body_template=body_template,
+            user_id=user.id,
         )
 
         self.db.add(campaign)

@@ -2,21 +2,21 @@ import base64
 import mimetypes
 from email import encoders
 from email.mime import base
-from typing import Any
+from typing import Any, Annotated
 from urllib.parse import quote
-
-from fastapi import UploadFile
+from fastapi import UploadFile, Depends
 from sqlalchemy import func, Date, cast
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import date
 
 from campaigns.models.attachment import Attachment
 from campaigns.models.campaign import Campaign
+from common.db.database import get_db
 from users.models.user import User
 
 
 class AttachmentService:
-    def __init__(self, db: AsyncSession):
+    def __init__(self, db: Annotated[AsyncSession, Depends(get_db)]):
         self.db = db
 
     async def get_recipients_count_by_date_for_user(
@@ -40,17 +40,31 @@ class AttachmentService:
             content += chunk
 
         filename = file.filename or "unnamed"
-        encoded_filename = quote(filename)
 
         mimetype, _ = mimetypes.guess_type(filename)
         if mimetype is None:
             mimetype = 'application/octet-stream'
 
+        return {
+            "filename": filename,
+            "mimetype": mimetype,
+            "size": len(content),
+            "content": base64.urlsafe_b64encode(content).decode("utf-8"),
+        }
+
+    def create_mime_part_from_attachment(
+        self,
+        mimetype: str,
+        content: str,
+        filename: str
+    ) -> base.MIMEBase:
         main_type, sub_type = mimetype.split('/', 1)
 
         mimepart = base.MIMEBase(main_type, sub_type)
         mimepart.set_payload(content)
         encoders.encode_base64(mimepart)
+
+        encoded_filename = quote(filename)
 
         mimepart.add_header(
             _name='Content-Disposition',
@@ -58,25 +72,22 @@ class AttachmentService:
         )
         mimepart.add_header("Content-ID", f"<{filename}>")
 
-        return {
-            "filename": encoded_filename,
-            "content": content,
-            "mimetype": mimetype,
-            "size": len(content),
-            "mime_part": mimepart,
-            "encoded_content": base64.urlsafe_b64encode(content).decode("utf-8"),
-        }
+        return mimepart
 
     async def create_attachment(
         self,
-        name: str,
+        campaign: Campaign,
+        filename: str,
         size: int,
-        mimetype: str
+        mimetype: str,
+        content: str,
     ) -> Attachment:
         attachment = Attachment(
-            name=name,
+            campaign_id=campaign.id,
+            filename=filename,
             size=size,
             mimetype=mimetype,
+            content=content,
         )
 
         self.db.add(attachment)

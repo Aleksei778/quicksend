@@ -5,7 +5,7 @@ from sqlalchemy import (
     Column,
     String,
     DateTime,
-    ForeignKey,
+    ForeignKey, Text,
 )
 
 from common.db.database import Base
@@ -15,9 +15,10 @@ class Attachment(Base):
     __tablename__ = "attachments"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    name = Column(String, nullable=False)
+    filename = Column(String, nullable=False)
     size = Column(Integer, nullable=False)
     mimetype = Column(String, nullable=False)
+    content = Column(Text, nullable=False)
     uploaded_at = Column(DateTime, nullable=False, default=datetime.utcnow)
 
     campaign_id = Column(Integer, ForeignKey("campaigns.id"))

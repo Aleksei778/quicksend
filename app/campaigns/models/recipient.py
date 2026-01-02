@@ -11,8 +11,7 @@ class Recipient(Base):
 
     id = Column(Uuid, primary_key=True, autoincrement=True)
     email = Column(EmailType, nullable=False)
-    sent_at = Column(DateTime, nullable=False, default=datetime.utcnow)
-    opened_at = Column(DateTime, nullable=True)
+    sent_at = Column(DateTime, nullable=True)
 
     campaign_id = Column(Integer, ForeignKey("campaigns.id"))
 

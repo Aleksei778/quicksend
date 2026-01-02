@@ -5,6 +5,8 @@ from starlette import status
 from starlette.responses import JSONResponse
 
 from campaigns.services.attachment_service import AttachmentService
+from campaigns.services.campaign_service import CampaignService
+from campaigns.services.recipient_service import RecipientService
 from subscriptions.services.subscription_service import SubscriptionService
 from users.dependencies.get_current_user import get_current_user
 from users.models.user import User
@@ -20,11 +22,23 @@ async def start_campaign(
     current_user: Annotated[User, Depends(get_current_user)],
     subscription_service: Annotated[SubscriptionService, Depends()],
     attachment_service: Annotated[AttachmentService, Depends()],
+    recipient_service: Annotated[RecipientService, Depends()],
+    campaign_service: Annotated[CampaignService, Depends()],
 ) -> None:
     campaign_data = json.loads(body) if body else {}
+
     recipients = campaign_data.get("recipients", [])
 
-    can_send, message = await subscription_service.check_if_user_can_send_emails(current_user, len(recipients))
+    if not recipients:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Please provide recipients",
+        )
+
+    can_send, message = await subscription_service.check_if_user_can_send_emails(
+        user=current_user,
+        current_recipients_count=len(recipients),
+    )
 
     if not can_send:
         raise HTTPException(
@@ -32,27 +46,38 @@ async def start_campaign(
             detail=message
         )
 
-    for file in files:
-        prepared_attachment = await attachment_service.prepare_attachment_for_gmail(file)
-        attachments.append(prepared_attachment)
-
-    sender_email = current_user.email
     sender_name = f"{current_user.first_name} {current_user.last_name}"
     subject = campaign_data.get("subject", "")
     body_template = campaign_data.get("body", "")
 
-    prep_attachments = [
-        {
-            "filename": att["filename"],
-            "content_type": att["content_type"],
-            "size": att["size"],
-            "data": att["encoded_content"],
-        }
-        for att in attachments
-    ]
-    attachment_paths = [
-        prep_attachment["filename"] for prep_attachment in prep_attachments
-    ]
+    campaign = await campaign_service.create_campaign_for_user(
+        sender_name=sender_name,
+        subject=subject,
+        body_template=body_template,
+        user=current_user,
+    )
+
+    campaign_attachments = []
+    for file in files:
+        prepared_attachment = await attachment_service.prepare_attachment_for_gmail(file)
+
+        campaign_attachment = await attachment_service.create_attachment(
+            campaign=campaign,
+            filename=prepared_attachment["filename"],
+            size=prepared_attachment["size"],
+            mimetype=prepared_attachment["mimetype"],
+            content=prepared_attachment["content"],
+        )
+        campaign_attachments.append(campaign_attachment)
+
+    campaign_recipients = []
+    for recipient in recipients:
+        campaign_recipient = await recipient_service.create_recipient(
+            campaign=campaign,
+            email=recipient["email"],
+        )
+
+        campaign_recipients.append(campaign_recipient)
 
     if campaign_data.get("date") and campaign_data.get("time"):
         camp_date = campaign_data.get("date")
@@ -70,28 +95,15 @@ async def start_campaign(
             "body_template": body_template,
             "attachments": prep_attachments,
         }
-        print(email_data)
-        print(scheduled_datetime)
+
         task = send_campaign.apply_async(
             args=[email_data], queue="email_campaigns", eta=scheduled_datetime
         )
 
-        print(f"Рассылка запланирована на {camp_date} {camp_time}.")
-        await db_manager.create_campaign(
-            sender_name=sender_name,
-            subject=subject,
-            body_template=body_template,
-            recipients=recipients,
-            attachment_files=attachment_paths,
-            campaign_time=naive_datetime,
-            user_id=current_user.id,
-        )
         return JSONResponse(
-            {
-                "message": f"Кампания запланирована на {scheduled_datetime.strftime('%Y-%m-%d %H:%M')}",
-                "task_id": task.id,
-            }
+            content=""
         )
+
     else:
         await mass_email_campaign(
             sender=sender_email,
@@ -103,18 +115,8 @@ async def start_campaign(
         )
         print(f"Рассылка начата в {datetime.now().strftime('%Y-%m-%d %H:%M')}.")
 
-        await db_manager.create_campaign(
-            sender_name=sender_name,
-            subject=subject,
-            body_template=body_template,
-            recipients=recipients,
-            attachment_files=attachment_paths,
-            user_id=current_user.id,
-        )
         return JSONResponse(
-            {
-                "message": f"Кампания запущена в {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
-            }
+            content=
         )
 
 
