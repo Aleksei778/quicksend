@@ -1,5 +1,6 @@
 from typing import Annotated
 from fastapi import HTTPException, Depends, routing
+from starlette import status
 
 from google_integration.auth.services.google_token_service import GoogleTokenService
 from google_integration.sheet.schemas.sheet_request import SheetRequest
@@ -20,6 +21,12 @@ async def parse_emails_from_spreadsheet(
 ):
     google_token = await google_token_service.get_google_token_for_user(user=current_user)
 
+    if not google_token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Google token not found for user {current_user}",
+        )
+
     return await google_sheets_service.parse_emails_from_spreadsheet(
         spreadsheet_id=request.spreadsheet_id,
         range=request.range,
@@ -28,26 +35,21 @@ async def parse_emails_from_spreadsheet(
 
 
 @google_sheets_router.get("/{spreadsheet_id}/metadata")
-async def get_sheet_metadata(spreadsheet_id: str):
-    try:
-        sheets_service = get_sheets_service()
-        spreadsheet = (
-            sheets_service.spreadsheets().get(spreadsheetId=spreadsheet_id).execute()
+async def get_sheet_metadata(
+    spreadsheet_id: str,
+    current_user: Annotated[User, Depends(get_current_user)],
+    google_token_service: Annotated[GoogleTokenService, Depends()],
+    google_sheets_service: Annotated[GoogleSheetsService, Depends()],
+):
+    google_token = await google_token_service.get_google_token_for_user(user=current_user)
+
+    if not google_token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Google token not found for user {current_user}",
         )
 
-        sheets = spreadsheet.get("sheets", [])
-        sheet_names = [
-            {
-                "title": sheet["properties"]["title"],
-                "sheetId": sheet["properties"]["sheetId"],
-            }
-            for sheet in sheets
-        ]
-
-        return {
-            "spreadsheetName": spreadsheet["properties"]["title"],
-            "sheets": sheet_names,
-        }
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    return await google_sheets_service.get_spreadsheet_metadata(
+        spreadsheet_id=spreadsheet_id,
+        google_token=google_token,
+    )

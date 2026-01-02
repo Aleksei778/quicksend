@@ -38,7 +38,7 @@ class GoogleSheetsService:
         spreadsheet_id: str,
         range: str,
         google_token: GoogleToken,
-    ):
+    ) -> set[str]:
         try:
             sheets_service = await self.get_google_sheets_service(google_token)
             spreadsheet_base = await sheets_service.spreadsheets().values()
@@ -90,12 +90,13 @@ class GoogleSheetsService:
         self,
         spreadsheet_id: str,
         google_token: GoogleToken,
-    ) -> dict:
+    ) -> dict[str, Any]:
         try:
             sheets_service = await self.get_google_sheets_service(google_token)
+            spreadsheet_base = await sheets_service.spreadsheets()
 
             spreadsheet = (
-                sheets_service.spreadsheets()
+                spreadsheet_base
                 .get(spreadsheetId=spreadsheet_id)
                 .execute()
             )
