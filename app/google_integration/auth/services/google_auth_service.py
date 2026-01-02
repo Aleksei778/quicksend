@@ -12,6 +12,7 @@ from starlette import status
 from common.log.logger import logger
 from google_integration.auth.models.google_token import GoogleToken
 from google_integration.auth.services.google_token_service import GoogleTokenService
+from google_integration.calendar.services.calendar_service import GoogleCalendarService
 from users.schemas.find_or_create_user import FindOrCreateUser
 from google_integration.auth.schemas.find_or_create_google_token import FindOrCreateGoogleToken
 from users.services.jwt_service import JwtService
@@ -26,13 +27,15 @@ class GoogleAuthService:
         self,
         user_service: Annotated[UserService, Depends()],
         google_token_service: Annotated[GoogleTokenService, Depends()],
+        google_calendar_service: Annotated[GoogleCalendarService, Depends()],
         jwt_service: Annotated[JwtService, Depends()],
-        db: AsyncSession = Depends(get_db),
+        db: Annotated[AsyncSession, Depends(get_db)],
     ) -> None:
         self.db = db
         self.user_service = user_service
         self.google_token_service = google_token_service
         self.jwt_service = jwt_service
+        self.google_calendar_service = google_calendar_service
         self.client_config = {
             "web": {
                 "client_id": google_settings.GOOGLE_CLIENT_ID,
@@ -109,7 +112,7 @@ class GoogleAuthService:
             oauth_id=user_info.get("id"),
         ))
 
-        await self.google_token_service.find_or_create_google_token(FindOrCreateGoogleToken(
+        google_token = await self.google_token_service.find_or_create_google_token(FindOrCreateGoogleToken(
             user=user,
             access_token=credentials.token,
             refresh_token=credentials.refresh_token,
@@ -118,6 +121,9 @@ class GoogleAuthService:
             expires_at=credentials.expiry,
             scope=" ".join(credentials.scopes) if credentials.scopes else None,
         ))
+
+        timezone = await self.google_calendar_service.get_user_timezone(google_token)
+        await self.user_service.set_timezone_for_user(user, timezone)
 
         user_data_for_jwt = await self.user_service.get_user_info_for_jwt(user)
 

@@ -22,10 +22,14 @@ class UserService:
                 last_name=find_or_create_dto.last_name,
                 picture=find_or_create_dto.picture,
                 oauth_id=find_or_create_dto.oauth_id,
-                timezone=find_or_create_dto.timezone,
             ))
 
         return user
+
+    async def set_timezone_for_user(self, user: User, timezone: str) -> None:
+        user.timezone = timezone
+
+        await self.db.commit()
 
     async def _create(self, find_or_create_dto: FindOrCreateUser) -> User:
         user = User(

@@ -8,4 +8,3 @@ class FindOrCreateUser(BaseModel):
     last_name: Optional[str] = None
     picture: Optional[str] = None
     oauth_id: Optional[str] = None
-    timezone: str = "UTC"
