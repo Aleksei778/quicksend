@@ -1,10 +1,9 @@
-from typing import AsyncGenerator
+from collections.abc import AsyncGenerator
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
 
 from common.config.base_config import base_settings
-
 
 SQLALCHEMY_DATABASE_URL = (
     f"postgresql+asyncpg://"
@@ -16,7 +15,6 @@ SQLALCHEMY_DATABASE_URL = (
     f"?async_fallback=True"
 )
 
-# Создаем асинхронный движок
 engine = create_async_engine(
     SQLALCHEMY_DATABASE_URL,
     future=True,

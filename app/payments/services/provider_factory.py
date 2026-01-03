@@ -13,7 +13,7 @@ class PaymentProviderFactory:
             case PaymentProvider.YOOKASSA:
                 return YookassaPaymentProvider(
                     secret_key=payment_settings.YOOKASSA_SECRET_KEY,
-                    shop_id=payment_settings.YOOKASSA_SHOP_ID
+                    shop_id=payment_settings.YOOKASSA_SHOP_ID,
                 )
             case _:
                 logger.error(f"Unknown payment provider: {provider}")
@@ -21,3 +21,7 @@ class PaymentProviderFactory:
                 raise Exception(
                     f"PaymentProviderFactory:create: Unknown payment provider: {provider}"
                 )
+
+
+async def get_payment_provider_factory() -> PaymentProviderFactory:
+    return PaymentProviderFactory()

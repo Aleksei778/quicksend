@@ -5,7 +5,8 @@ from sqlalchemy import (
     Column,
     String,
     DateTime,
-    ForeignKey, Text,
+    ForeignKey,
+    Text,
 )
 
 from common.db.database import Base

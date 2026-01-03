@@ -1,18 +1,14 @@
-from typing import Any, Annotated
-from fastapi.params import Depends
+from typing import Any
+import pytz
 from googleapiclient.discovery import build
-from sqlalchemy.ext.asyncio import AsyncSession
 from google.oauth2.credentials import Credentials
 
-from common.db.database import get_db
+from common.log.logger import logger
 from google_integration.auth.models.google_token import GoogleToken
 from google_integration.config.google_config import google_settings
 
 
 class GoogleCalendarService:
-    def __init__(self, db: Annotated[AsyncSession, Depends(get_db)]):
-        self.db = db
-
     async def _create_credentials(self, google_token: GoogleToken) -> Credentials:
         return Credentials(
             token=google_token.access_token,
@@ -32,17 +28,27 @@ class GoogleCalendarService:
             credentials=credentials,
         )
 
-    async def get_user_timezone(self, google_token: GoogleToken) -> str:
-        service = await self.get_google_calendar_service(google_token)
+    async def get_user_timezone(
+        self, google_token: GoogleToken
+    ) -> pytz.tzinfo.BaseTzInfo:
+        try:
+            service = await self.get_google_calendar_service(google_token)
 
-        settings = service.settings().get(setting='timezone').execute()
-        timezone = settings.get('value')
-        if timezone:
-            return timezone
+            settings = service.settings().get(setting="timezone").execute()
+            timezone = settings.get("value")
+            if timezone:
+                return pytz.timezone(timezone)
 
-        calendar = service.calendars().get(calendarId='primary').execute()
-        timezone = calendar.get('timeZone')
-        if timezone:
-            return timezone
+            calendar = service.calendars().get(calendarId="primary").execute()
+            timezone = calendar.get("timeZone")
+            if timezone:
+                return pytz.timezone(timezone)
 
-        return "UTC"
+        except Exception as e:
+            logger.info(f"Failed to get user timezone: {e}")
+
+        return pytz.utc
+
+
+async def get_google_calendar_service() -> GoogleCalendarService:
+    return GoogleCalendarService()

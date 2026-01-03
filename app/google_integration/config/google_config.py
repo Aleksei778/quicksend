@@ -11,7 +11,7 @@ class GoogleSettings(BaseSettings):
         "email",
         "profile",
         "https://www.googleapis.com/auth/gmail.send",
-        "https://www.googleapis.com/auth/spreadsheets.readonly"
+        "https://www.googleapis.com/auth/spreadsheets.readonly",
     ]
     GOOGLE_USERINFO_URL: str = "https://www.googleapis.com/oauth2/v3/userinfo"
     GOOGLE_TOKEN_INFO_URL: str = "https://oauth2.googleapis.com/tokeninfo"
@@ -21,6 +21,8 @@ class GoogleSettings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
+        extra="allow",
     )
+
 
 google_settings = GoogleSettings()

@@ -12,15 +12,13 @@ from users.models.user import User
 
 
 class RecipientService:
-    def __init__(self, db: Annotated[AsyncSession, Depends(get_db)]):
-        self.db = db
+    def __init__(self, db: AsyncSession):
+        self._db = db
 
     async def get_recipients_count_by_date_for_user(
-        self,
-        user: User,
-        camp_date: date
+        self, user: User, camp_date: date
     ) -> int:
-        result = await self.db.execute(
+        result = await self._db.execute(
             func.sum(Campaign.recipients)
             .where(Campaign.user_id == user.id)
             .where(cast(Campaign.started_at, Date) == camp_date)
@@ -40,8 +38,14 @@ class RecipientService:
             campaign_id=campaign.id,
         )
 
-        self.db.add(recipient)
-        await self.db.commit()
-        await self.db.refresh(recipient)
+        self._db.add(recipient)
+        await self._db.commit()
+        await self._db.refresh(recipient)
 
         return recipient
+
+
+async def get_recipient_service(
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> RecipientService:
+    return RecipientService(db=db)

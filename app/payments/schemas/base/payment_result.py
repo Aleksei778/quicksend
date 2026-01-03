@@ -12,3 +12,4 @@ class PaymentResult(BaseModel):
     amount: Decimal
     currency: Currency
     metadata: Dict[str, Any]
+    payment_method: str

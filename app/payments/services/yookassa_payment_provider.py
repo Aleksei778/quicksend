@@ -6,9 +6,9 @@ from datetime import datetime
 import uuid
 from typing import Dict, Any, Optional
 
-from payments.schema.base.payment_result import PaymentResult
-from payments.schema.base.payment_status import PaymentStatus
-from payments.schema.base.refund_result import RefundResult
+from payments.schemas.base.payment_result import PaymentResult
+from payments.schemas.base.payment_status import PaymentStatus
+from payments.schemas.base.refund_result import RefundResult
 from payments.services.base_payment_provider import BasePaymentProvider
 from payments.enum.currency import Currency
 from common.log.logger import logger
@@ -30,21 +30,25 @@ class YookassaPaymentProvider(BasePaymentProvider):
     ) -> PaymentResult:
         capture = kwargs.get("capture", True)
 
-        yoo_payment = YooPayment.create({
-            "amount": {
-                "value": amount,
-                "currency": currency.value,
+        yoo_payment = YooPayment.create(
+            {
+                "amount": {
+                    "value": amount,
+                    "currency": currency.value,
+                },
+                "confirmation": {
+                    "type": "redirect",
+                    "return_url": return_url,
+                },
+                "capture": capture,
+                "metadata": metadata or {},
             },
-            "confirmation": {
-                "type": "redirect",
-                "return_url": return_url,
-            },
-            "capture": capture,
-            "metadata": metadata or {},
-        }, str(uuid.uuid4()))
+            str(uuid.uuid4()),
+        )
 
         return PaymentResult(
             payment_id=yoo_payment.id,
+            payment_method=yoo_payment.payment_method,
             confirmation_url=yoo_payment.confirmation_url,
             status=yoo_payment.status,
             amount=Decimal(yoo_payment.amount),
@@ -52,10 +56,7 @@ class YookassaPaymentProvider(BasePaymentProvider):
             metadata=yoo_payment.metadata,
         )
 
-    async def get_payment_status(
-        self,
-        payment_id: str
-    ) -> PaymentStatus:
+    async def get_payment_status(self, payment_id: str) -> PaymentStatus:
         yoo_payment = YooPayment.find_one(payment_id)
 
         return await self._get_payment_info(yoo_payment)
@@ -84,17 +85,20 @@ class YookassaPaymentProvider(BasePaymentProvider):
         else:
             currency = currency.value
 
-        refund = Refund.create({
-            "amount": {
-                "value": amount,
-                "currency": currency,
+        refund = Refund.create(
+            {
+                "amount": {
+                    "value": amount,
+                    "currency": currency,
+                },
             },
-        }, str(uuid.uuid4()))
+            str(uuid.uuid4()),
+        )
 
         return RefundResult(
             refund_id=refund.id,
             status=refund.status,
-            amount=Decimal(refund.amount.value)
+            amount=Decimal(refund.amount.value),
         )
 
     async def verify_webhook(self, data: Dict[str, Any]) -> PaymentStatus:
@@ -111,16 +115,19 @@ class YookassaPaymentProvider(BasePaymentProvider):
         description: str,
         metadata: Dict[str, Any] = None,
     ) -> PaymentResult:
-        yoo_payment = YooPayment.create({
-            "amount": {
-                "value": str(amount),
-                "currency": currency.value,
+        yoo_payment = YooPayment.create(
+            {
+                "amount": {
+                    "value": str(amount),
+                    "currency": currency.value,
+                },
+                "capture": True,
+                "payment_method_id": payment_token,
+                "description": description,
+                "metadata": metadata or {},
             },
-            "capture": True,
-            "payment_method_id": payment_token,
-            "description": description,
-            "metadata": metadata or {},
-        }, str(uuid.uuid4()))
+            str(uuid.uuid4()),
+        )
 
         return PaymentResult(
             payment_id=yoo_payment.id,
@@ -145,7 +152,7 @@ class YookassaPaymentProvider(BasePaymentProvider):
             status=yoo_payment.status,
             payment_method=payment_method,
             paid_at=paid_at,
-            metadata=yoo_payment.metadata or {}
+            metadata=yoo_payment.metadata or {},
         )
 
     async def _map_payment_statuses(self, yoo_status: str) -> str:

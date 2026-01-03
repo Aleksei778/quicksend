@@ -3,9 +3,9 @@ from typing import Optional, Dict, Any
 from decimal import Decimal
 
 from payments.enum.currency import Currency
-from payments.schema.base.payment_status import PaymentStatus
-from payments.schema.base.payment_result import PaymentResult
-from payments.schema.base.refund_result import RefundResult
+from payments.schemas.base.payment_status import PaymentStatus
+from payments.schemas.base.payment_result import PaymentResult
+from payments.schemas.base.refund_result import RefundResult
 
 
 class BasePaymentProvider(ABC):
@@ -21,10 +21,7 @@ class BasePaymentProvider(ABC):
         pass
 
     @abstractmethod
-    async def get_payment_status(
-        self,
-        payment_id: str
-    ) -> PaymentStatus:
+    async def get_payment_status(self, payment_id: str) -> PaymentStatus:
         pass
 
     @abstractmethod

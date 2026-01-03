@@ -1,15 +1,28 @@
 import json
-from typing import Annotated
+from datetime import datetime
+from typing import Annotated, Optional
+import pytz
 from fastapi import APIRouter, Depends, HTTPException, Form, UploadFile, File
 from starlette import status
 from starlette.responses import JSONResponse
 
-from campaigns.services.attachment_service import AttachmentService
-from campaigns.services.campaign_service import CampaignService
-from campaigns.services.recipient_service import RecipientService
-from subscriptions.services.subscription_service import SubscriptionService
+from campaigns.services.attachment_service import (
+    AttachmentService,
+    get_attachment_service,
+)
+from campaigns.services.campaign_service import CampaignService, get_campaign_service
+from campaigns.services.recipient_service import RecipientService, get_recipient_service
+from google_integration.gmail.services.gmail_service import (
+    GoogleGmailService,
+    get_google_gmail_service,
+)
+from subscriptions.services.subscription_service import (
+    SubscriptionService,
+    get_subscription_service,
+)
 from users.dependencies.get_current_user import get_current_user
 from users.models.user import User
+from campaigns.tasks.send_emails_task import send_emails_task
 
 
 campaign_router = APIRouter(prefix="/campaigns", tags=["Campaigns"])
@@ -18,13 +31,18 @@ campaign_router = APIRouter(prefix="/campaigns", tags=["Campaigns"])
 @campaign_router.post("/start")
 async def start_campaign(
     body: Annotated[str, Form(..., min_length=10)],
-    files: Annotated[list[UploadFile], File([])],
+    files: Annotated[Optional[list[UploadFile]], None],
     current_user: Annotated[User, Depends(get_current_user)],
-    subscription_service: Annotated[SubscriptionService, Depends()],
-    attachment_service: Annotated[AttachmentService, Depends()],
-    recipient_service: Annotated[RecipientService, Depends()],
-    campaign_service: Annotated[CampaignService, Depends()],
-) -> None:
+    attachment_service: Annotated[AttachmentService, Depends(get_attachment_service)],
+    recipient_service: Annotated[RecipientService, Depends(get_recipient_service)],
+    campaign_service: Annotated[CampaignService, Depends(get_campaign_service)],
+    subscription_service: Annotated[
+        SubscriptionService, Depends(get_subscription_service)
+    ],
+    google_gmail_service: Annotated[
+        GoogleGmailService, Depends(get_google_gmail_service)
+    ],
+) -> JSONResponse:
     campaign_data = json.loads(body) if body else {}
 
     recipients = campaign_data.get("recipients", [])
@@ -36,15 +54,11 @@ async def start_campaign(
         )
 
     can_send, message = await subscription_service.check_if_user_can_send_emails(
-        user=current_user,
-        current_recipients_count=len(recipients),
+        current_user
     )
 
     if not can_send:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=message
-        )
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=message)
 
     sender_name = f"{current_user.first_name} {current_user.last_name}"
     subject = campaign_data.get("subject", "")
@@ -59,7 +73,9 @@ async def start_campaign(
 
     campaign_attachments = []
     for file in files:
-        prepared_attachment = await attachment_service.prepare_attachment_for_gmail(file)
+        prepared_attachment = await attachment_service.prepare_attachment_for_gmail(
+            file
+        )
 
         campaign_attachment = await attachment_service.create_attachment(
             campaign=campaign,
@@ -80,53 +96,36 @@ async def start_campaign(
         campaign_recipients.append(campaign_recipient)
 
     if campaign_data.get("date") and campaign_data.get("time"):
-        camp_date = campaign_data.get("date")
-        camp_time = campaign_data.get("time")
-
-        naive_datetime = datetime.strptime(f"{camp_date} {camp_time}", "%Y-%m-%d %H:%M")
-        user_timezone = timezone(campaign_data.get("timezone"))
-
-        scheduled_datetime = user_timezone.localize(naive_datetime)
-        email_data = {
-            "sender_email": sender_email,
-            "sender_name": sender_name,
-            "recipients": recipients,
-            "subject": subject,
-            "body_template": body_template,
-            "attachments": prep_attachments,
-        }
-
-        task = send_campaign.apply_async(
-            args=[email_data], queue="email_campaigns", eta=scheduled_datetime
+        scheduled_datetime = campaign_service.process_time_for_campaign_time(
+            campaign_date=campaign_data.get("date"),
+            campaign_time=campaign_data.get("time"),
+            user_timezone_str=current_user.timezone,
         )
-
-        return JSONResponse(
-            content=""
-        )
-
     else:
-        await mass_email_campaign(
-            sender=sender_email,
-            recipients=recipients,
-            subject=subject,
-            body_template=body_template,
-            attachments=prep_attachments,
-            sender_name=sender_name,
-        )
-        print(f"Рассылка начата в {datetime.now().strftime('%Y-%m-%d %H:%M')}.")
+        scheduled_datetime = datetime.now(pytz.utc)
 
-        return JSONResponse(
-            content=
-        )
+    send_emails_task.apply_async(
+        args=[campaign, campaign_service, subscription_service, google_gmail_service],
+        queue="email_campaigns",
+        eta=scheduled_datetime,
+    )
+
+    return JSONResponse(
+        status_code=status.HTTP_201_CREATED,
+        content={"message": "Campaign successfully created"},
+    )
 
 
 @campaign_router.get("/all")
 async def get_all_campaigns(
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> JSONResponse:
-    return JSONResponse({
-        "campaigns": current_user.campaigns,
-    })
+    return JSONResponse(
+        status_code=status.HTTP_200_OK,
+        content={
+            "campaigns": current_user.campaigns,
+        },
+    )
 
 
 @campaign_router.get("/statistics")
@@ -139,7 +138,10 @@ async def get_campaigns_statistics(
     for campaign in campaigns:
         recipients_count += len(campaign.recipients)
 
-    return JSONResponse({
-        "campaigns_count": len(campaigns),
-        "recipients_count": len(recipients_count),
-    })
+    return JSONResponse(
+        status_code=status.HTTP_200_OK,
+        content={
+            "campaigns_count": len(campaigns),
+            "recipients_count": len(recipients_count),
+        },
+    )

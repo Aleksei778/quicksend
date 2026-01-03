@@ -1,4 +1,5 @@
 from datetime import datetime
+from sqlalchemy.orm import relationship
 from sqlalchemy import (
     Column,
     Integer,
@@ -7,9 +8,8 @@ from sqlalchemy import (
     Enum,
     JSON,
     DateTime,
-    DECIMAL
+    DECIMAL,
 )
-from sqlalchemy.orm import relationship
 
 from common.db.database import Base
 from payments.enum.provider import PaymentProvider as PaymentProviderEnum
@@ -22,9 +22,10 @@ class Payment(Base):
 
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    subscription_id = Column(Integer, ForeignKey("subscriptions.id"), nullable=False)
 
     external_payment_id = Column(String(100), unique=True, nullable=False, index=True)
-    provider = Column(Enum(PaymentProviderEnum), default=PaymentStatusEnum.PENDING)
+    provider = Column(Enum(PaymentProviderEnum), nullable=False)
 
     amount = Column(DECIMAL, nullable=False)
     currency = Column(Enum(CurrencyEnum), default=CurrencyEnum.RUB)
@@ -36,6 +37,7 @@ class Payment(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     paid_at = Column(DateTime, nullable=True)
 
-    metadata = Column(JSON, nullable=True)
+    payment_metadata = Column(JSON, nullable=True)
 
-    user = relationship("User", back_populates="payments")
+    user = relationship(argument="User", back_populates="payments")
+    subscription = relationship(argument="Subscription", back_populates="payments")

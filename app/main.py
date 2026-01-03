@@ -1,3 +1,4 @@
+from contextlib import asynccontextmanager
 from typing import Callable
 from fastapi import FastAPI, APIRouter, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
@@ -5,13 +6,25 @@ import uvicorn
 from datetime import datetime
 
 from google_integration.auth.routes.google_auth_routes import google_auth_router
+from google_integration.sheet.routes.sheet_router import google_sheets_router
 from users.routes.jwt_routes import jwt_router
-from payments.routes.payment_routes import router as payment_router
+from subscriptions.routes.subscription_routes import subscription_router
+from campaigns.routes.campaign_routes import campaign_router
 from common.log.logger import logger
 from common.config.base_config import base_settings
+from common.redis.redis_client import close_redis_client
 
 
-app = FastAPI()
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    logger.info("✅ App started")
+    yield
+    logger.info("❌ App ended")
+    await close_redis_client()
+
+
+app = FastAPI(title="QuickSend", lifespan=lifespan)
+
 
 @app.middleware("http")
 async def log_requests(request: Request, call_next: Callable) -> Response:
@@ -31,6 +44,7 @@ async def log_requests(request: Request, call_next: Callable) -> Response:
 
     return response
 
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -49,11 +63,14 @@ app.add_middleware(
     ],
 )
 
+
 api_router = APIRouter(prefix="/api", tags=["Api"])
 
 api_router.include_router(google_auth_router)
 api_router.include_router(jwt_router)
-api_router.include_router(payment_router)
+api_router.include_router(subscription_router)
+api_router.include_router(google_sheets_router)
+api_router.include_router(campaign_router)
 
 app.include_router(api_router)
 

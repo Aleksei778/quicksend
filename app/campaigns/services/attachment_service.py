@@ -16,15 +16,13 @@ from users.models.user import User
 
 
 class AttachmentService:
-    def __init__(self, db: Annotated[AsyncSession, Depends(get_db)]):
-        self.db = db
+    def __init__(self, db: AsyncSession):
+        self._db = db
 
     async def get_recipients_count_by_date_for_user(
-        self,
-        user: User,
-        camp_date: date
+        self, user: User, camp_date: date
     ) -> int:
-        result = await self.db.execute(
+        result = await self._db.execute(
             func.sum(Campaign.recipients)
             .where(Campaign.user_id == user.id)
             .where(cast(Campaign.started_at, Date) == camp_date)
@@ -43,7 +41,7 @@ class AttachmentService:
 
         mimetype, _ = mimetypes.guess_type(filename)
         if mimetype is None:
-            mimetype = 'application/octet-stream'
+            mimetype = "application/octet-stream"
 
         return {
             "filename": filename,
@@ -53,12 +51,9 @@ class AttachmentService:
         }
 
     def create_mime_part_from_attachment(
-        self,
-        mimetype: str,
-        content: str,
-        filename: str
+        self, mimetype: str, content: str, filename: str
     ) -> base.MIMEBase:
-        main_type, sub_type = mimetype.split('/', 1)
+        main_type, sub_type = mimetype.split("/", 1)
 
         mimepart = base.MIMEBase(main_type, sub_type)
         mimepart.set_payload(content)
@@ -67,7 +62,7 @@ class AttachmentService:
         encoded_filename = quote(filename)
 
         mimepart.add_header(
-            _name='Content-Disposition',
+            _name="Content-Disposition",
             _value=f'attachment; filename="{encoded_filename}"',
         )
         mimepart.add_header("Content-ID", f"<{filename}>")
@@ -90,8 +85,14 @@ class AttachmentService:
             content=content,
         )
 
-        self.db.add(attachment)
-        await self.db.commit()
-        await self.db.refresh(attachment)
+        self._db.add(attachment)
+        await self._db.commit()
+        await self._db.refresh(attachment)
 
         return attachment
+
+
+async def get_attachment_service(
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> AttachmentService:
+    return AttachmentService(db=db)

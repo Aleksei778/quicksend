@@ -2,17 +2,17 @@ from typing import Annotated
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials
 
-from users.services.user_service import UserService
+from users.services.user_service import UserService, get_user_service
 from common.security.security import security
 from common.log.logger import logger
-from users.services.jwt_service import JwtService
+from users.services.jwt_service import JwtService, get_jwt_service
 from users.models.user import User
 
 
 async def get_current_user(
     credentials: Annotated[HTTPAuthorizationCredentials, Depends(security)],
-    user_service: UserService = Depends(UserService),
-    jwt_service: JwtService = Depends(JwtService),
+    user_service: UserService = Depends(get_user_service),
+    jwt_service: JwtService = Depends(get_jwt_service),
 ) -> User:
     if not credentials:
         raise HTTPException(
@@ -53,9 +53,7 @@ async def get_current_user(
         return user
 
     except Exception as e:
-        logger.error(
-            f"get_current_user: Some problems while extracting user: {e}"
-        )
+        logger.error(f"get_current_user: Some problems while extracting user: {e}")
 
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

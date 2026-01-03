@@ -1,14 +1,5 @@
 from sqlalchemy.orm import relationship
-from sqlalchemy import (
-    Column,
-    Integer,
-    String,
-    DateTime,
-    Text,
-    ForeignKey,
-    Enum,
-    Uuid
-)
+from sqlalchemy import Column, Integer, String, DateTime, Text, ForeignKey, Enum, Uuid
 from datetime import datetime
 
 from common.db.database import Base
