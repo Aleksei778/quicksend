@@ -18,6 +18,7 @@ class BaseSettings(BasePydanticSettings):
     REDIS_PORT: int = 6379
     REDIS_USER: str = ""
     REDIS_PASSWORD: str = ""
+    SESSION_SECRET_KEY: str = ""
 
     model_config = SettingsConfigDict(
         env_file=".env",

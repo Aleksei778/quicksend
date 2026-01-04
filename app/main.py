@@ -4,6 +4,7 @@ from fastapi import FastAPI, APIRouter, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 from datetime import datetime
+from starlette.middleware.sessions import SessionMiddleware
 
 from google_integration.auth.routes.google_auth_routes import google_auth_router
 from google_integration.sheet.routes.sheet_router import google_sheets_router
@@ -62,6 +63,7 @@ app.add_middleware(
         "accept",
     ],
 )
+app.add_middleware(SessionMiddleware, secret_key=base_settings.SESSION_SECRET_KEY)
 
 
 api_router = APIRouter(prefix="/api", tags=["Api"])
@@ -75,4 +77,4 @@ api_router.include_router(campaign_router)
 app.include_router(api_router)
 
 if __name__ == "__main__":
-    uvicorn.run("main:app", port=8000, reload=True)
+    uvicorn.run("main:app", port=8000, host="0.0.0.0", reload=True)

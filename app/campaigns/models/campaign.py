@@ -1,5 +1,5 @@
 from sqlalchemy.orm import relationship
-from sqlalchemy import Column, Integer, String, DateTime, Text, ForeignKey, Enum, Uuid
+from sqlalchemy import Column, Integer, String, DateTime, Text, ForeignKey, Enum
 from datetime import datetime
 
 from common.db.database import Base
@@ -9,7 +9,7 @@ from campaigns.enum.campaign_status import CampaignStatus
 class Campaign(Base):
     __tablename__ = "campaigns"
 
-    id = Column(Uuid, primary_key=True, index=True, autoincrement=True)
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     sender_name = Column(String, nullable=True)
     subject = Column(String, nullable=False)
     body_template = Column(Text, nullable=True)

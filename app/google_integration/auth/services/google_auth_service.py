@@ -48,19 +48,17 @@ class GoogleAuthService:
             "web": {
                 "client_id": google_settings.GOOGLE_CLIENT_ID,
                 "client_secret": google_settings.GOOGLE_CLIENT_SECRET,
-                "redirect_uris": [
-                    f"{base_settings.BACKEND_URL}/api/auth/google/callback"
-                ],
                 "auth_uri": "https://accounts.google.com/o/oauth2/auth",
                 "token_uri": "https://oauth2.googleapis.com/token",
             }
         }
+        self._redirect_uri = f"{base_settings.BACKEND_URL}/api/auth/google/callback"
 
     async def _create_flow(self) -> Flow:
         return Flow.from_client_config(
             client_config=self._client_config,
-            scopes=google_settings.GOOGLE_AUTH_SCOPES,
-            redirect_uris=[f"{base_settings.BACKEND_URL}/"],
+            scopes=google_settings.GOOGLE_SCOPES,
+            redirect_uri=self._redirect_uri,
         )
 
     async def _check_state(self, request: Request) -> None:

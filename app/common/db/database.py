@@ -1,5 +1,5 @@
 from collections.abc import AsyncGenerator
-from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.orm import DeclarativeBase, declarative_base
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
 
@@ -42,5 +42,4 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
             await session.close()
 
 
-class Base(DeclarativeBase):
-    pass
+Base = declarative_base()

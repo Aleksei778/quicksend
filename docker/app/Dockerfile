@@ -15,7 +15,7 @@ RUN uv pip install --system -r pyproject.toml
 
 COPY . .
 
-ENV PYTHONPATH=/app \
+ENV PYTHONPATH=/app/app \
     PYTHONUNBUFFERED=1
 
 EXPOSE 8000

@@ -17,12 +17,8 @@ class Subscription(Base):
     end_at = Column(DateTime, nullable=False)
     canceled_at = Column(DateTime, nullable=True)
     failed_payment_attempts = Column(Integer, default=0)
-    last_payment_id = Column(Integer, ForeignKey("payments.id"), nullable=True)
 
     user_id = Column(Integer, ForeignKey("users.id"))
 
     user = relationship(argument="User", back_populates="subscriptions")
-    last_payment = relationship(
-        argument="Payment", foreign_keys="subscriptions.last_payment_id"
-    )
     payments = relationship(argument="Payment", back_populates="subscription")

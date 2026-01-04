@@ -39,13 +39,6 @@ class SubscriptionService:
 
         return True
 
-    async def set_last_payment_for_subscription(
-        self, subscription: Subscription, last_payment: Payment
-    ) -> None:
-        subscription.last_payment = last_payment
-
-        await self._db.commit()
-
     async def create_subscription(
         self,
         user: User,

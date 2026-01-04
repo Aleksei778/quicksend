@@ -1,19 +1,25 @@
 from logging.config import fileConfig
-from sqlalchemy import engine_from_config
-from sqlalchemy import pool
+from sqlalchemy import engine_from_config, pool
 from alembic import context
 
-from common.config.base_config import base_settings
 from common.db.database import Base
+from common.config.base_config import base_settings
+from users.models.user import User
+from campaigns.models.campaign import Campaign
+from campaigns.models.attachment import Attachment
+from campaigns.models.recipient import Recipient
+from google_integration.auth.models.google_token import GoogleToken
+from subscriptions.models.subscription import Subscription
+from payments.models.payment import Payment
 
 config = context.config
 
 section = config.config_ini_section
-config.set_section_option(section, "DB_HOST", base_settings.DB_HOST)
-config.set_section_option(section, "DB_NAME", base_settings.DB_NAME)
-config.set_section_option(section, "DB_PASS", base_settings.DB_PASS)
-config.set_section_option(section, "DB_USER", base_settings.DB_USER)
-config.set_section_option(section, "DB_PORT", base_settings.DB_PORT)
+config.set_section_option(section, "DB_HOST", str(base_settings.DB_HOST))
+config.set_section_option(section, "DB_NAME", str(base_settings.DB_NAME))
+config.set_section_option(section, "DB_PASS", str(base_settings.DB_PASS))
+config.set_section_option(section, "DB_USER", str(base_settings.DB_USER))
+config.set_section_option(section, "DB_PORT", str(base_settings.DB_PORT))
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
@@ -59,7 +65,9 @@ def run_migrations_online() -> None:
     )
 
     with connectable.connect() as connection:
-        context.configure(connection=connection, target_metadata=target_metadata)
+        context.configure(
+            connection=connection, target_metadata=target_metadata
+        )
 
         with context.begin_transaction():
             context.run_migrations()

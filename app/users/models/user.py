@@ -22,3 +22,4 @@ class User(Base):
     campaigns = relationship(argument="Campaign", back_populates="user")
     subscriptions = relationship(argument="Subscription", back_populates="user")
     google_token = relationship(argument="GoogleToken", back_populates="user")
+    payments = relationship(argument="Payment", back_populates="user")
