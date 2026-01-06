@@ -9,8 +9,10 @@ from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
 
+from common.config.base_config import base_settings
 from common.db.database import get_db
 from common.log.logger import logger
+from google_integration.auth.enum.source import Source
 from google_integration.auth.models.google_token import GoogleToken
 from google_integration.auth.services.google_token_service import (
     GoogleTokenService,
@@ -26,7 +28,6 @@ from google_integration.auth.schemas.find_or_create_google_token import (
 )
 from users.services.jwt_service import JwtService, get_jwt_service
 from users.services.user_service import UserService, get_user_service
-from common.config.base_config import base_settings
 from google_integration.config.google_config import google_settings
 
 
@@ -44,34 +45,23 @@ class GoogleAuthService:
         self._google_token_service = google_token_service
         self._jwt_service = jwt_service
         self._google_calendar_service = google_calendar_service
-        self._client_config = {
-            "web": {
-                "client_id": google_settings.GOOGLE_CLIENT_ID,
-                "client_secret": google_settings.GOOGLE_CLIENT_SECRET,
-                "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-                "token_uri": "https://oauth2.googleapis.com/token",
-            }
-        }
-        self._redirect_uri = f"{base_settings.BACKEND_URL}/api/auth/google/callback"
 
-    async def _create_flow(self) -> Flow:
+    async def _create_flow(self, source: Source) -> Flow:
         return Flow.from_client_config(
-            client_config=self._client_config,
-            scopes=google_settings.GOOGLE_SCOPES,
-            redirect_uri=self._redirect_uri,
+            client_config=google_settings.CLIENT_CONFIG,
+            scopes=google_settings.WEBSITE_GOOGLE_SCOPES
+                if source == Source.Website
+                else google_settings.EXTENSION_GOOGLE_SCOPES,
+            redirect_uri=google_settings.REDIRECT_URI,
         )
 
-    async def _check_state(self, request: Request) -> None:
-        state = request.session.get("state")
-
-        if not state or state != request.query_params.get("state"):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid state parameter",
-            )
-
-    async def login(self, request: Request) -> RedirectResponse:
-        flow = await self._create_flow()
+    async def login(
+        self,
+        request: Request,
+        redirect_to: Source,
+        lang: str,
+    ) -> RedirectResponse:
+        flow = await self._create_flow(redirect_to)
 
         authorization_url, state = flow.authorization_url(
             access_type="offline",
@@ -80,13 +70,24 @@ class GoogleAuthService:
         )
 
         request.session["state"] = state
+        request.session["redirect_to"] = redirect_to.value
+        request.session["lang"] = lang
 
         return RedirectResponse(authorization_url)
 
     async def callback(self, request: Request):
-        await self._check_state(request)
+        state = request.session.get("state")
 
-        flow = await self._create_flow()
+        if not state or state != request.query_params.get("state"):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid state parameter",
+            )
+
+        redirect_to = request.session.get('redirect_to', 'website')
+        lang = request.session.get('lang', 'ru')
+
+        flow = await self._create_flow(Source(redirect_to))
         flow.fetch_token(authorization_response=str(request.url))
 
         credentials = flow.credentials
@@ -120,20 +121,21 @@ class GoogleAuthService:
             )
         )
 
-        google_token = await self._google_token_service.find_or_create_google_token(
-            FindOrCreateGoogleToken(
-                user=user,
-                access_token=credentials.token,
-                refresh_token=credentials.refresh_token,
-                token_type="Bearer",
-                expires_in=None,
-                expires_at=credentials.expiry,
-                scope=" ".join(credentials.scopes) if credentials.scopes else None,
+        if Source(redirect_to) == Source.Extension:
+            google_token = await self._google_token_service.find_or_create_google_token(
+                FindOrCreateGoogleToken(
+                    user=user,
+                    access_token=credentials.token,
+                    refresh_token=credentials.refresh_token,
+                    token_type="Bearer",
+                    expires_in=None,
+                    expires_at=credentials.expiry,
+                    scope=" ".join(credentials.scopes) if credentials.scopes else None,
+                )
             )
-        )
 
-        timezone = await self._google_calendar_service.get_user_timezone(google_token)
-        await self._user_service.set_timezone_for_user(user, str(timezone))
+            timezone = await self._google_calendar_service.get_user_timezone(google_token)
+            await self._user_service.set_timezone_for_user(user, str(timezone))
 
         user_data_for_jwt = await self._user_service.get_user_info_for_jwt(user)
 
@@ -142,18 +144,42 @@ class GoogleAuthService:
             refresh_jwt_token,
         ) = await self._jwt_service.create_jwt_pair_from_data(user_data_for_jwt)
 
-        return await self._get_redirect_response_and_set_cookie(
-            access_jwt_token, refresh_jwt_token
+        return await self._get_redirect(
+            access_jwt_token,
+            refresh_jwt_token,
+
+            Source(redirect_to),
         )
 
-    async def _get_redirect_response_and_set_cookie(
+    async def _get_redirect(
         self,
         access_jwt_token: str,
         refresh_jwt_token: str,
+        lang: str,
+        source: Source,
     ) -> RedirectResponse:
-        response = RedirectResponse("/")
+        if source == Source.Website:
+            response = RedirectResponse(
+                f"{base_settings.FRONTEND_URL}/{lang}/profile"
+            )
 
-        response.headers["Authorization"] = f"Bearer {access_jwt_token}"
+            response.set_cookie(
+                key="access_token",
+                value=f"Bearer {access_jwt_token}",
+                httponly=True,
+                secure=True,
+                samesite="strict",
+                max_age=jwt_co,
+            )
+
+            response.set_cookie(
+                key="refresh_token",
+                value=f"Bearer {access_jwt_token}",
+                httponly=True,
+                secure=True,
+                samesite="strict",
+                max_age=604800,
+            )
 
         await self._jwt_service.set_tokens_cookie(
             response=response,

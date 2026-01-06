@@ -135,25 +135,12 @@ class JwtService:
             )
 
     async def set_tokens_cookie(
-        self, response: Response, access_token: str, refresh_token: str
+        self,
+        response: Response,
+        access_token: str,
+        refresh_token: str,
     ) -> None:
-        response.set_cookie(
-            key="access_token",
-            value=f"Bearer {access_token}",
-            httponly=True,
-            secure=True,
-            samesite="strict",
-            max_age=1800,
-        )
 
-        response.set_cookie(
-            key="refresh_token",
-            value=f"Bearer {refresh_token}",
-            httponly=True,
-            secure=True,
-            samesite="strict",
-            max_age=604800,
-        )
 
 
 async def get_jwt_service(

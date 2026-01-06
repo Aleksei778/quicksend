@@ -1,23 +1,35 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from common.config.base_config import base_settings
+
 
 class GoogleSettings(BaseSettings):
     GOOGLE_CLIENT_ID: str = ""
     GOOGLE_CLIENT_SECRET: str = ""
-    GOOGLE_AUTHORIZE_URL: str = "https://accounts.google.com/o/oauth2/v2/auth"
-    GOOGLE_TOKEN_URL: str = "https://oauth2.googleapis.com/token"
-    GOOGLE_SCOPES: list[str] = [
-        'https://www.googleapis.com/auth/gmail.send',
-        'https://www.googleapis.com/auth/spreadsheets.readonly',
-        'https://www.googleapis.com/auth/calendar.readonly',
+    WEBSITE_GOOGLE_SCOPES: list[str] = [
         'openid',
         'https://www.googleapis.com/auth/userinfo.email',
         'https://www.googleapis.com/auth/userinfo.profile'
     ]
-    GOOGLE_USERINFO_URL: str = "https://www.googleapis.com/oauth2/v3/userinfo"
-    GOOGLE_TOKEN_INFO_URL: str = "https://oauth2.googleapis.com/tokeninfo"
-    GOOGLE_JWKS_URL: str = "https://www.googleapis.com/oauth2/v3/certs"
+    EXTENSION_GOOGLE_SCOPES: list[str] = [
+        'openid',
+        'https://www.googleapis.com/auth/userinfo.email',
+        'https://www.googleapis.com/auth/userinfo.profile',
+        'https://www.googleapis.com/auth/gmail.send',
+        'https://www.googleapis.com/auth/spreadsheets.readonly',
+        'https://www.googleapis.com/auth/calendar.readonly',
+    ]
     GOOGLE_TOKEN_URI: str = "https://accounts.google.com/o/oauth2/token"
+    GOOGLE_AUTH_URI: str = "https://accounts.google.com/o/oauth2/auth"
+    CLIENT_CONFIG: dict[str] = {
+        "web": {
+            "client_id": GOOGLE_CLIENT_ID,
+            "client_secret": GOOGLE_CLIENT_SECRET,
+            "auth_uri": GOOGLE_AUTH_URI,
+            "token_uri": GOOGLE_TOKEN_URI,
+        }
+    }
+    REDIRECT_URI = f"{base_settings.BACKEND_URL}/api/auth/google/callback"
 
     model_config = SettingsConfigDict(
         env_file=".env",
