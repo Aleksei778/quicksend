@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from typing import Annotated
 from fastapi import APIRouter, Depends, status, HTTPException
 from fastapi.responses import JSONResponse
@@ -62,7 +62,7 @@ async def start_base_premium_subscription(
     subscription = await subscription_service.create_subscription(
         user=current_user,
         plan=request.plan,
-        end_at=datetime.utcnow() + timedelta(days=request.plan.get_days_count()),
+        end_at=datetime.now(UTC) + timedelta(days=request.plan.get_days_count()),
     )
 
     payment = await payment_service.create_payment(
@@ -78,8 +78,6 @@ async def start_base_premium_subscription(
             metadata=payment_result.metadata,
         )
     )
-
-    await subscription_service.set_last_payment_for_subscription(subscription, payment)
 
     return JSONResponse(
         content={
@@ -106,7 +104,7 @@ async def start_trial_subscription(
     subscription = await subscription_service.create_subscription(
         user=current_user,
         plan=SubscriptionPlan.TRIAL,
-        end_at=datetime.utcnow()
+        end_at=datetime.now(UTC)
         + timedelta(days=SubscriptionPlan.TRIAL.get_days_count()),
     )
 

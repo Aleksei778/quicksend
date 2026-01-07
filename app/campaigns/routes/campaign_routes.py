@@ -2,8 +2,7 @@ import json
 from datetime import datetime
 from typing import Annotated, Optional
 import pytz
-from fastapi import APIRouter, Depends, HTTPException, Form, UploadFile, File
-from starlette import status
+from fastapi import APIRouter, Depends, HTTPException, Form, UploadFile, status
 from starlette.responses import JSONResponse
 
 from campaigns.services.attachment_service import (
@@ -142,6 +141,6 @@ async def get_campaigns_statistics(
         status_code=status.HTTP_200_OK,
         content={
             "campaigns_count": len(campaigns),
-            "recipients_count": len(recipients_count),
+            "recipients_count": recipients_count,
         },
     )

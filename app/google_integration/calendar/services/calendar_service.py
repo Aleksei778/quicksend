@@ -1,26 +1,18 @@
 from typing import Any
 import pytz
 from googleapiclient.discovery import build
-from google.oauth2.credentials import Credentials
 
 from common.log.logger import logger
 from google_integration.auth.models.google_token import GoogleToken
-from google_integration.config.google_config import google_settings
+from google_integration.auth.utils.credentials import create_credentials
 
 
 class GoogleCalendarService:
-    async def _create_credentials(self, google_token: GoogleToken) -> Credentials:
-        return Credentials(
-            token=google_token.access_token,
-            refresh_token=google_token.refresh_token,
-            token_uri=google_settings.GOOGLE_TOKEN_URI,
-            client_id=google_settings.GOOGLE_CLIENT_ID,
-            client_secret=google_settings.GOOGLE_CLIENT_SECRET,
+    async def get_google_calendar_service(self, google_token: GoogleToken) -> Any:
+        credentials = await create_credentials(
+            google_token=google_token,
             scopes=["https://www.googleapis.com/auth/calendar.readonly"],
         )
-
-    async def get_google_calendar_service(self, google_token: GoogleToken) -> Any:
-        credentials = await self._create_credentials(google_token)
 
         return build(
             serviceName="calendar",

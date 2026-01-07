@@ -15,9 +15,10 @@ class GoogleTokenService:
     def __init__(self, db: AsyncSession) -> None:
         self._db = db
 
-    async def get_google_token_for_user(self, user: User) -> GoogleToken | None:
+    async def find_google_token_by_user(self, user: User) -> GoogleToken | None:
         result = await self._db.execute(
-            select(GoogleToken).where(GoogleToken.user_id == user.id)
+            select(GoogleToken)
+            .where(GoogleToken.user_id == user.id)
         )
 
         return result.scalar_one_or_none()
@@ -25,31 +26,21 @@ class GoogleTokenService:
     async def find_or_create_google_token(
         self, find_or_create_google_token_dto: FindOrCreateGoogleToken
     ) -> GoogleToken:
-        user_id = find_or_create_google_token_dto.user.id
-        token = await self.find_token_by_user_id(user_id)
+        token = await self.find_google_token_by_user(find_or_create_google_token_dto.user)
 
         if token is None:
             token = GoogleToken()
 
-        token.user_id = user_id
-        token.access_token = find_or_create_google_token_dto.access_token
-        token.refresh_token = find_or_create_google_token_dto.refresh_token
-        token.expires_in = find_or_create_google_token_dto.expires_in
-        token.expires_at = find_or_create_google_token_dto.expires_at
-        token.scope = find_or_create_google_token_dto.scope
-        token.token_type = find_or_create_google_token_dto.token_type
+        token.user_id = find_or_create_google_token_dto.user.id
+        token.access = find_or_create_google_token_dto.access
+        token.refresh = find_or_create_google_token_dto.refresh
+        token.expiry = find_or_create_google_token_dto.expiry
 
         self._db.add(token)
         await self._db.commit()
         await self._db.refresh(token)
 
         return token
-
-    async def find_token_by_user_id(self, user_id: int) -> GoogleToken | None:
-        result = await self._db.execute(
-            select(GoogleToken).where(GoogleToken.user_id == user_id)
-        )
-        return result.scalar_one_or_none()
 
 
 async def get_google_token_service(

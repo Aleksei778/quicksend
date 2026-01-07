@@ -1,13 +1,12 @@
-from datetime import datetime, timedelta
+import asyncio
 from typing import Annotated
-import httpx
-from fastapi import Request, HTTPException, Depends
+from fastapi import Request, HTTPException, Depends, status
 from fastapi.responses import RedirectResponse
 from google_auth_oauthlib.flow import Flow
 from googleapiclient.discovery import build
+from google.auth.transport.requests import Request as GoogleRequest
 from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
-from starlette import status
 
 from common.config.base_config import base_settings
 from common.db.database import get_db
@@ -18,17 +17,19 @@ from google_integration.auth.services.google_token_service import (
     GoogleTokenService,
     get_google_token_service,
 )
+from google_integration.auth.utils.credentials import create_credentials
 from google_integration.calendar.services.calendar_service import (
     GoogleCalendarService,
     get_google_calendar_service,
 )
+from google_integration.config.google_config import google_settings
+from users.config.jwt_config import jwt_settings
 from users.schemas.find_or_create_user import FindOrCreateUser
 from google_integration.auth.schemas.find_or_create_google_token import (
     FindOrCreateGoogleToken,
 )
 from users.services.jwt_service import JwtService, get_jwt_service
 from users.services.user_service import UserService, get_user_service
-from google_integration.config.google_config import google_settings
 
 
 class GoogleAuthService:
@@ -50,8 +51,8 @@ class GoogleAuthService:
         return Flow.from_client_config(
             client_config=google_settings.CLIENT_CONFIG,
             scopes=google_settings.WEBSITE_GOOGLE_SCOPES
-                if source == Source.Website
-                else google_settings.EXTENSION_GOOGLE_SCOPES,
+            if source == Source.Website
+            else google_settings.EXTENSION_GOOGLE_SCOPES,
             redirect_uri=google_settings.REDIRECT_URI,
         )
 
@@ -125,12 +126,9 @@ class GoogleAuthService:
             google_token = await self._google_token_service.find_or_create_google_token(
                 FindOrCreateGoogleToken(
                     user=user,
-                    access_token=credentials.token,
-                    refresh_token=credentials.refresh_token,
-                    token_type="Bearer",
-                    expires_in=None,
-                    expires_at=credentials.expiry,
-                    scope=" ".join(credentials.scopes) if credentials.scopes else None,
+                    access=credentials.token,
+                    refresh=credentials.refresh_token,
+                    expiry=credentials.expiry
                 )
             )
 
@@ -145,10 +143,10 @@ class GoogleAuthService:
         ) = await self._jwt_service.create_jwt_pair_from_data(user_data_for_jwt)
 
         return await self._get_redirect(
-            access_jwt_token,
-            refresh_jwt_token,
-
-            Source(redirect_to),
+            access_jwt_token=access_jwt_token,
+            refresh_jwt_token=refresh_jwt_token,
+            source=Source(redirect_to),
+            lang=lang,
         )
 
     async def _get_redirect(
@@ -164,30 +162,30 @@ class GoogleAuthService:
             )
 
             response.set_cookie(
-                key="access_token",
+                key="access_jwt_token",
                 value=f"Bearer {access_jwt_token}",
                 httponly=True,
                 secure=True,
                 samesite="strict",
-                max_age=jwt_co,
+                max_age=jwt_settings.JWT_ACCESS_TOKEN_EXPIRATION_HOURS * 3600,
             )
 
             response.set_cookie(
-                key="refresh_token",
+                key="refresh_jwt_token",
                 value=f"Bearer {access_jwt_token}",
                 httponly=True,
                 secure=True,
                 samesite="strict",
-                max_age=604800,
+                max_age=jwt_settings.JWT_REFRESH_TOKEN_EXPIRATION_DAYS * 3600 * 24,
             )
 
-        await self._jwt_service.set_tokens_cookie(
-            response=response,
-            access_token=access_jwt_token,
-            refresh_token=refresh_jwt_token,
-        )
-
-        return response
+            return response
+        else:
+            return RedirectResponse(
+                f"https://{base_settings.EXTENSION_ID}.chromiumapp.org/callback"
+                + f"?access_token={access_jwt_token}"
+                + f"&refresh_token={refresh_jwt_token}"
+            )
 
     async def refresh_google_token(self, google_token: GoogleToken) -> str:
         if not google_token or not google_token.refresh_token:
@@ -196,45 +194,32 @@ class GoogleAuthService:
             )
 
         try:
-            async with httpx.AsyncClient() as client:
-                response = await client.post(
-                    "https://oauth2.googleapis.com/token",
-                    data={
-                        "grant_type": "refresh_token",
-                        "refresh_token": google_token.refresh_token,
-                        "client_id": google_settings.GOOGLE_CLIENT_ID,
-                        "client_secret": google_settings.GOOGLE_CLIENT_SECRET,
-                    },
-                )
-                response.raise_for_status()
-                new_token_data = response.json()
+            credentials = await create_credentials(
+                google_token=google_token,
+                scopes=None,
+            )
+
+            loop = asyncio.get_event_loop()
+            await loop.run_in_executor(None, credentials.refresh, GoogleRequest())
 
             stmt = (
                 update(GoogleToken)
                 .where(GoogleToken.id == google_token.id)
                 .values(
-                    access_token=new_token_data["access_token"],
-                    expires_in=new_token_data["expires_in"],
-                    expires_at=datetime.now()
-                    + timedelta(seconds=new_token_data["expires_in"]),
+                    access_token=credentials.token,
+                    expiry=credentials.expiry,
                 )
             )
             await self._db.execute(stmt)
             await self._db.commit()
 
-            return new_token_data["access_token"]
+            return credentials.token
 
-        except httpx.HTTPError as e:
-            await self._db.rollback()
-
-            raise Exception(
-                f"google_auth_service:refresh_google_token: Failed to refresh token: {str(e)}"
-            )
         except Exception as e:
             await self._db.rollback()
 
             raise Exception(
-                f"google_auth_service:refresh_google_token: Unexpected error while refreshing token: {str(e)}"
+                f"google_token_service:refresh_google_token: Failed to refresh token: {str(e)}"
             )
 
 

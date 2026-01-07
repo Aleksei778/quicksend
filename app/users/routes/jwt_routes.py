@@ -9,41 +9,6 @@ from users.services.jwt_service import JwtService, get_jwt_service
 jwt_router = APIRouter(prefix="/auth/jwt", tags=["auth_jwt"])
 
 
-@jwt_router.get("/token")
-async def get_jwt(
-    request: Request, jwt_service: Annotated[JwtService, Depends(get_jwt_service)]
-):
-    access_token = request.cookies.get("access_token")
-
-    token = await jwt_service.extract_token(access_token)
-
-    if not token:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="Wrong token format"
-        )
-
-    payload = await jwt_service.verify_access_token(token)
-
-    user_info = payload.get("user_info")
-    if not user_info:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token data"
-        )
-
-    user_id = user_info.get("id")
-    user_email = user_info.get("email")
-
-    if not user_id or not user_email:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid user data in token",
-        )
-
-    return JSONResponse(
-        content={"access_token": token, "token_type": "bearer", "user_info": user_info}
-    )
-
-
 @jwt_router.post("/refresh")
 async def refresh_token(
     request: Request,

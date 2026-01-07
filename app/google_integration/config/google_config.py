@@ -1,3 +1,4 @@
+from typing import Any
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from common.config.base_config import base_settings
@@ -21,7 +22,7 @@ class GoogleSettings(BaseSettings):
     ]
     GOOGLE_TOKEN_URI: str = "https://accounts.google.com/o/oauth2/token"
     GOOGLE_AUTH_URI: str = "https://accounts.google.com/o/oauth2/auth"
-    CLIENT_CONFIG: dict[str] = {
+    CLIENT_CONFIG: dict[str, dict[str, Any]] = {
         "web": {
             "client_id": GOOGLE_CLIENT_ID,
             "client_secret": GOOGLE_CLIENT_SECRET,
@@ -29,7 +30,7 @@ class GoogleSettings(BaseSettings):
             "token_uri": GOOGLE_TOKEN_URI,
         }
     }
-    REDIRECT_URI = f"{base_settings.BACKEND_URL}/api/auth/google/callback"
+    REDIRECT_URI: str = f"{base_settings.BACKEND_URL}/api/auth/google/callback"
 
     model_config = SettingsConfigDict(
         env_file=".env",

@@ -17,7 +17,7 @@ from common.redis.redis_client import close_redis_client
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(_: FastAPI):
     logger.info("✅ App started")
     yield
     logger.info("❌ App ended")
@@ -50,7 +50,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         base_settings.FRONTEND_URL,
-        base_settings.CHROME_EXTENSION_URL,
+        "chrome-extension://" + base_settings.EXTENSION_ID,
     ],
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],

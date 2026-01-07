@@ -34,9 +34,13 @@ async def parse_emails_from_spreadsheet(
     ],
     google_auth_service: Annotated[GoogleAuthService, Depends(get_google_auth_service)],
 ):
-    google_token = await google_token_service.get_google_token_for_user(
-        user=current_user
-    )
+    if not current_user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="No current user",
+        )
+
+    google_token = await google_token_service.find_google_token_by_user(current_user)
 
     if not google_token:
         raise HTTPException(
@@ -66,11 +70,13 @@ async def get_sheet_metadata(
     ],
     google_auth_service: Annotated[GoogleAuthService, Depends(get_google_auth_service)],
 ):
-    current_user = User()
+    if not current_user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"No current user",
+        )
 
-    google_token = await google_token_service.get_google_token_for_user(
-        user=current_user
-    )
+    google_token = await google_token_service.find_google_token_by_user(current_user)
 
     if google_token.is_expired:
         await google_auth_service.refresh_google_token(google_token)

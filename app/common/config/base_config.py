@@ -4,7 +4,7 @@ from pydantic_settings import BaseSettings as BasePydanticSettings, SettingsConf
 class BaseSettings(BasePydanticSettings):
     BACKEND_URL: str = ""
     FRONTEND_URL: str = ""
-    CHROME_EXTENSION_URL: str = ""
+    EXTENSION_ID: str = ""
     DB_PORT: int = 5432
     DB_HOST: str = ""
     DB_NAME: str = ""
