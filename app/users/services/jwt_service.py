@@ -72,22 +72,23 @@ class JwtService:
 
     async def refresh_jwt_token(self, refresh_token: str) -> tuple[str, str]:
         payload = await self.verify_refresh_token(refresh_token)
-        user_data = payload.get("user_info")
 
-        if not user_data:
-            logger.info(f"No user data {user_data}")
+        user_id = payload.get("user_id")
 
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED, detail=f"No user data"
-            )
-
-        user_email = user_data.get("email")
-        user = await self._user_service.find_by_email(user_email)
-
-        if not user:
+        if user_id is None:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail=f"No such user: {user_email}",
+                detail="No user id provided",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        user = await self._user_service.find_by_id(user_id=user_id)
+
+        if user is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="No user found",
+                headers={"WWW-Authenticate": "Bearer"},
             )
 
         new_user_data = await self._user_service.get_user_info_for_jwt(user)

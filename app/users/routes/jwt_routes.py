@@ -11,7 +11,7 @@ from users.services.jwt_service import JwtService, get_jwt_service
 jwt_router = APIRouter(prefix="/auth/jwt", tags=["auth_jwt"])
 
 
-@jwt_router.post("/refresh")
+@jwt_router.post("/refresh", response_model=None)
 async def refresh_token(
     source: Source,
     jwt_service: Annotated[JwtService, Depends(get_jwt_service)],
@@ -60,11 +60,11 @@ async def refresh_token(
         )
 
 
-@jwt_router.post("/logout")
-async def logout(_: User = Depends(get_current_user)):
+@jwt_router.post("/logout", response_model=None)
+async def logout(_: User = Depends(get_current_user)) -> JSONResponse:
     response = JSONResponse(content={"message": "Successfully logged out"})
 
-    response.delete_cookie(key="access_token")
-    response.delete_cookie(key="refresh_token")
+    response.delete_cookie(key="access_jwt_token")
+    response.delete_cookie(key="refresh_jwt_token")
 
     return response

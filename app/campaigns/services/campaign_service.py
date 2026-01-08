@@ -141,6 +141,8 @@ class CampaignService:
 
         return new_count
 
+    async def find_by_id(self, campaign_id: int) -> Campaign | None:
+        return await self._db.get(Campaign, campaign_id)
 
 async def get_campaign_service(
     db: Annotated[AsyncSession, Depends(get_db)],

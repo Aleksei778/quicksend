@@ -12,11 +12,16 @@ from subscriptions.services.subscription_service import SubscriptionService
 
 @celery_app.task(bind=True, max_retries=3, default_retry_delay=60)
 async def send_emails_task(
-    campaign: Campaign,
+    campaign_id: int,
     subscription_service: SubscriptionService,
     campaign_service: CampaignService,
     google_gmail_service: GoogleGmailService,
 ):
+    campaign = await campaign_service.find_by_id(campaign_id)
+
+    if campaign is None:
+        return
+
     results = {
         "total": len(campaign.recipients),
         "sent": 0,

@@ -32,7 +32,9 @@ async def get_current_user(
 
     try:
         payload = await jwt_service.verify_access_token(token=access_token)
-        user_id = payload.get("user_info", {}).get("id")
+        logger.info(payload)
+
+        user_id = payload.get("user_id")
 
         if user_id is None:
             raise HTTPException(
@@ -85,7 +87,9 @@ async def get_current_user_for_refresh(
 
     try:
         payload = await jwt_service.verify_refresh_token(token=refresh_token)
-        user_id = payload.get("user_info", {}).get("id")
+        user_id = payload.get("user_id")
+
+        logger.info(payload)
 
         if user_id is None:
             raise HTTPException(

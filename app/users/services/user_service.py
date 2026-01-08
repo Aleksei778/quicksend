@@ -54,7 +54,7 @@ class UserService:
 
     async def get_user_info_for_jwt(self, user: User) -> dict[str, str]:
         return {
-            "id": user.id,
+            "user_id": user.id,
             "email": user.email,
             "oauth_id": user.oauth_id
         }

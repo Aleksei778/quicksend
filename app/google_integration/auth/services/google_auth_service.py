@@ -178,8 +178,8 @@ class GoogleAuthService:
         else:
             return RedirectResponse(
                 f"https://{base_settings.EXTENSION_ID}.chromiumapp.org/callback"
-                + f"?access_token={access_jwt_token}"
-                + f"&refresh_token={refresh_jwt_token}"
+                + f"?access_jwt_token={access_jwt_token}"
+                + f"&refresh_jwt_token={refresh_jwt_token}"
             )
 
     async def refresh_google_token(self, google_token: GoogleToken) -> str:
