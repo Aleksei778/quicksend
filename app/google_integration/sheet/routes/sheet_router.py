@@ -19,7 +19,7 @@ from users.dependencies.get_current_user import get_current_user
 from users.models.user import User
 
 
-google_sheets_router = routing.APIRouter(prefix="/sheets", tags=["sheets"])
+google_sheets_router = routing.APIRouter(prefix="/googlesheet", tags=["sheets"])
 
 
 @google_sheets_router.post("/parse")

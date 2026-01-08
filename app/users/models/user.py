@@ -15,7 +15,6 @@ class User(Base):
     email = Column(EmailType, unique=True, nullable=False, index=True)
     oauth_id = Column(String(255), nullable=True, index=True)
     picture = Column(String(500), nullable=True)
-    timezone = Column(String(50), default="UTC")
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     updated_at = Column(DateTime, nullable=False, default=datetime.utcnow)
 

@@ -50,7 +50,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         base_settings.FRONTEND_URL,
-        "chrome-extension://" + base_settings.EXTENSION_ID,
+        f"chrome-extension://{base_settings.EXTENSION_ID}",
     ],
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],

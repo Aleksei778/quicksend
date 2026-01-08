@@ -43,6 +43,18 @@ class CampaignService:
 
         return campaign
 
+    async def set_started_at_and_timezone_for_campaign(
+        self,
+        campaign: Campaign,
+        started_at: datetime,
+        timezone: str
+    ) -> None:
+        campaign.started_at = started_at
+        campaign.timezone = timezone
+
+        await self._db.commit()
+        await self._db.refresh(campaign)
+
     async def create_message_with_attachment(self, message: CreateMessage) -> str:
         msg = multipart.MIMEMultipart()
         msg["From"] = f"{message.sender_name} <{message.sender_email}>"
@@ -90,23 +102,21 @@ class CampaignService:
         return base64.urlsafe_b64encode(msg.as_bytes()).decode("utf-8")
 
     async def process_time_for_campaign_time(
-        self, campaign_date: str, campaign_time: str, user_timezone_str: str | None
-    ) -> datetime:
+        self,
+        campaign_date: str,
+        campaign_time: str,
+        campaign_timezone: str
+    ) -> tuple[datetime, str]:
         naive_datetime = datetime.strptime(
             f"{campaign_date} {campaign_time}", "%Y-%m-%dT%H:%M:%S"
         )
 
-        if user_timezone_str is None:
-            user_timezone_str = "UTC"
-
-        user_timezone = pytz.timezone(user_timezone_str)
-
-        scheduled_datetime_local = user_timezone.localize(naive_datetime)
+        scheduled_datetime_local = pytz.timezone(campaign_timezone).localize(naive_datetime)
 
         scheduled_datetime_utc = scheduled_datetime_local.astimezone(pytz.utc)
 
         now_utc = datetime.now(pytz.utc)
-        min_delay = now_utc + timedelta(hours=1)
+        min_delay = now_utc + timedelta(minutes=5)
 
         if min_delay > scheduled_datetime_utc:
             raise HTTPException(
@@ -114,7 +124,7 @@ class CampaignService:
                 detail=f"The time {campaign_date} is in the past",
             )
 
-        return scheduled_datetime_utc
+        return scheduled_datetime_utc, campaign_timezone
 
     async def get_user_daily_sent_count(self, user: User) -> int:
         key = f"sent:{user.id}:{date.today()}"

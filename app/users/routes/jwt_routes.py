@@ -1,9 +1,11 @@
-from fastapi import APIRouter, Request, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Response
 from fastapi.responses import JSONResponse
 from typing import Annotated
 
-from users.dependencies.get_current_user import get_current_user
+from google_integration.auth.enum.source import Source
+from users.config.jwt_config import jwt_settings
 from users.models.user import User
+from users.dependencies.get_current_user import get_current_user, get_current_user_for_refresh
 from users.services.jwt_service import JwtService, get_jwt_service
 
 jwt_router = APIRouter(prefix="/auth/jwt", tags=["auth_jwt"])
@@ -11,44 +13,41 @@ jwt_router = APIRouter(prefix="/auth/jwt", tags=["auth_jwt"])
 
 @jwt_router.post("/refresh")
 async def refresh_token(
-    request: Request,
+    source: Source,
     jwt_service: Annotated[JwtService, Depends(get_jwt_service)],
-    current_user: User = Depends(get_current_user),
-):
-    refresh_token = request.cookies.get("refresh_token")
-
-    if not refresh_token:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token not found"
-        )
-
+    user_and_token: Annotated[tuple[User, str], Depends(get_current_user_for_refresh)],
+) -> Response | JSONResponse:
     try:
-        token_type, token = refresh_token.split()
-        if token_type.lower() != "bearer":
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED, detail="Wrong token type"
+        _, refresh_token = user_and_token
+
+        token_data = await jwt_service.refresh_jwt_token(refresh_token)
+        new_access_token, new_refresh_token = token_data
+
+        if source == Source.Website:
+            response = Response()
+
+            response.set_cookie(
+                key="access_jwt_token",
+                value=f"Bearer {new_access_token}",
+                httponly=True,
+                secure=True,
+                samesite="strict",
+                max_age=jwt_settings.JWT_ACCESS_TOKEN_EXPIRATION_HOURS * 3600,
             )
-    except ValueError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="Wrong token format"
-        )
 
-    try:
-        token_data = await jwt_service.refresh_token(token)
-
-        response = JSONResponse(
-            content={
-                "access_token": token_data["access_token"],
-                "refresh_token": token_data["refresh_token"],
-                "token_type": token_data["token_type"],
-            }
-        )
-
-        await jwt_service.set_tokens_cookie(
-            response=response,
-            access_token=token_data["access_token"],
-            refresh_token=token_data["refresh_token"],
-        )
+            response.set_cookie(
+                key="refresh_jwt_token",
+                value=f"Bearer {new_refresh_token}",
+                httponly=True,
+                secure=True,
+                samesite="strict",
+                max_age=jwt_settings.JWT_REFRESH_TOKEN_EXPIRATION_DAYS * 3600 * 24,
+            )
+        else:
+            response = JSONResponse({
+                "access_jwt_token": new_access_token,
+                "refresh_jwt_token": new_refresh_token,
+            })
 
         return response
 
@@ -62,7 +61,7 @@ async def refresh_token(
 
 
 @jwt_router.post("/logout")
-async def logout(current_user: User = Depends(get_current_user)):
+async def logout(_: User = Depends(get_current_user)):
     response = JSONResponse(content={"message": "Successfully logged out"})
 
     response.delete_cookie(key="access_token")

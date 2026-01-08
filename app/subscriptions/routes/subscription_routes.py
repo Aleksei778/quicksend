@@ -20,7 +20,7 @@ from users.dependencies.get_current_user import get_current_user
 from users.models.user import User
 
 
-subscription_router = APIRouter(prefix="/subscriptions", tags=["subscriptions"])
+subscription_router = APIRouter(prefix="/subscription", tags=["subscriptions"])
 
 
 @subscription_router.post(path="/subscribe")
@@ -114,3 +114,16 @@ async def start_trial_subscription(
         },
         status_code=status.HTTP_201_CREATED,
     )
+
+@subscription_router.get(path="/current")
+async def check_current_subscription(
+    current_user: Annotated[User, Depends(get_current_user)],
+    subscription_service: Annotated[
+        SubscriptionService, Depends(get_subscription_service)
+    ],
+) -> JSONResponse:
+    current_subscription = await subscription_service.get_user_active_subscription(user=current_user)
+
+    return JSONResponse({
+        "plan": current_subscription.plan if current_subscription else "no",
+    })

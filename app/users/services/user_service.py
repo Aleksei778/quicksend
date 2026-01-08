@@ -1,4 +1,4 @@
-from typing import Dict, Annotated
+from typing import Annotated
 from fastapi import Depends
 from pydantic import EmailStr
 from sqlalchemy import select
@@ -29,11 +29,6 @@ class UserService:
 
         return user
 
-    async def set_timezone_for_user(self, user: User, timezone: str) -> None:
-        user.timezone = timezone
-
-        await self._db.commit()
-
     async def _create(self, find_or_create_dto: FindOrCreateUser) -> User:
         user = User(
             email=find_or_create_dto.email,
@@ -41,7 +36,6 @@ class UserService:
             last_name=find_or_create_dto.last_name,
             picture=find_or_create_dto.picture,
             oauth_id=find_or_create_dto.oauth_id,
-            timezone=find_or_create_dto.timezone,
         )
 
         self._db.add(user)
@@ -58,8 +52,12 @@ class UserService:
 
         return result.scalar_one_or_none()
 
-    async def get_user_info_for_jwt(self, user: User) -> Dict[str, str]:
-        return {"id": user.id, "email": user.email}
+    async def get_user_info_for_jwt(self, user: User) -> dict[str, str]:
+        return {
+            "id": user.id,
+            "email": user.email,
+            "oauth_id": user.oauth_id
+        }
 
 
 async def get_user_service(db: Annotated[AsyncSession, Depends(get_db)]) -> UserService:

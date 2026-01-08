@@ -15,15 +15,11 @@ google_auth_router = APIRouter(prefix="/auth/google", tags=["google_auth"])
 @google_auth_router.get("/login")
 async def login(
     request: Request,
-    redirect_to: str,
+    source: Source,
     lang: str,
     google_auth_service: Annotated[GoogleAuthService, Depends(get_google_auth_service)],
 ) -> RedirectResponse:
-    return await google_auth_service.login(
-        request=request,
-        redirect_to=Source(redirect_to),
-        lang=lang,
-    )
+    return await google_auth_service.login(request, source, lang)
 
 
 @google_auth_router.get("/callback")

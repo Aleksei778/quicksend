@@ -1,5 +1,5 @@
 from typing import Annotated
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials
 
 from users.services.user_service import UserService, get_user_service
@@ -10,28 +10,28 @@ from users.models.user import User
 
 
 async def get_current_user(
-    credentials: Annotated[HTTPAuthorizationCredentials, Depends(security)],
-    user_service: UserService = Depends(get_user_service),
-    jwt_service: JwtService = Depends(get_jwt_service),
+    request: Request,
+    credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(security)],
+    user_service: Annotated[UserService, Depends(get_user_service)],
+    jwt_service: Annotated[JwtService, Depends(get_jwt_service)],
 ) -> User:
-    if not credentials:
+    access_token: str | None = None
+
+    if credentials and credentials.scheme.lower() == "bearer":
+        access_token = credentials.credentials
+
+    if not access_token:
+        access_token = request.cookies.get("access_token")
+
+    if not access_token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="No credentials provided",
+            detail="No token provided",
             headers={"WWW-Authenticate": "Bearer"},
         )
-
-    if credentials.scheme.lower() != "bearer":
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid scheme",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
-    token_str: str = credentials.credentials
 
     try:
-        payload = await jwt_service.verify_access_token(token=token_str)
+        payload = await jwt_service.verify_access_token(token=access_token)
         user_id = payload.get("user_info", {}).get("id")
 
         if user_id is None:
@@ -51,6 +51,59 @@ async def get_current_user(
             )
 
         return user
+
+    except Exception as e:
+        logger.error(f"get_current_user: Some problems while extracting user: {e}")
+
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Could not validate credentials: {str(e)}",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+
+async def get_current_user_for_refresh(
+    request: Request,
+    credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(security)],
+    user_service: Annotated[UserService, Depends(get_user_service)],
+    jwt_service: Annotated[JwtService, Depends(get_jwt_service)],
+) -> tuple[User, str]:
+    refresh_token: str | None = None
+
+    if credentials and credentials.scheme.lower() == "bearer":
+        refresh_token = credentials.credentials
+
+    if not refresh_token:
+        refresh_token = request.cookies.get("refresh_token")
+
+    if not refresh_token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="No token provided",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    try:
+        payload = await jwt_service.verify_refresh_token(token=refresh_token)
+        user_id = payload.get("user_info", {}).get("id")
+
+        if user_id is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="No user id provided",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        user = await user_service.find_by_id(user_id=user_id)
+
+        if user is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="No user found",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        return user, refresh_token
 
     except Exception as e:
         logger.error(f"get_current_user: Some problems while extracting user: {e}")

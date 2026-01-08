@@ -24,7 +24,7 @@ from users.models.user import User
 from campaigns.tasks.send_emails_task import send_emails_task
 
 
-campaign_router = APIRouter(prefix="/campaigns", tags=["Campaigns"])
+campaign_router = APIRouter(prefix="/campaign", tags=["Campaigns"])
 
 
 @campaign_router.post("/start")
@@ -94,14 +94,21 @@ async def start_campaign(
 
         campaign_recipients.append(campaign_recipient)
 
-    if campaign_data.get("date") and campaign_data.get("time"):
-        scheduled_datetime = campaign_service.process_time_for_campaign_time(
+    if campaign_data.get("date") and campaign_data.get("time") and campaign_data.get("timezone"):
+        scheduled_datetime, timezone = campaign_service.process_time_for_campaign_time(
             campaign_date=campaign_data.get("date"),
             campaign_time=campaign_data.get("time"),
-            user_timezone_str=current_user.timezone,
+            campaign_timezone=campaign_data.get("timezone"),
         )
     else:
         scheduled_datetime = datetime.now(pytz.utc)
+        timezone = "UTC"
+
+    await campaign_service.set_started_at_and_timezone_for_campaign(
+        campaign=campaign,
+        started_at=scheduled_datetime,
+        timezone=timezone,
+    )
 
     send_emails_task.apply_async(
         args=[campaign, campaign_service, subscription_service, google_gmail_service],

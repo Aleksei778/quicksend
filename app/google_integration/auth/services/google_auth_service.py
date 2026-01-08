@@ -10,7 +10,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from common.config.base_config import base_settings
 from common.db.database import get_db
-from common.log.logger import logger
 from google_integration.auth.enum.source import Source
 from google_integration.auth.models.google_token import GoogleToken
 from google_integration.auth.services.google_token_service import (
@@ -18,10 +17,6 @@ from google_integration.auth.services.google_token_service import (
     get_google_token_service,
 )
 from google_integration.auth.utils.credentials import create_credentials
-from google_integration.calendar.services.calendar_service import (
-    GoogleCalendarService,
-    get_google_calendar_service,
-)
 from google_integration.config.google_config import google_settings
 from users.config.jwt_config import jwt_settings
 from users.schemas.find_or_create_user import FindOrCreateUser
@@ -30,6 +25,7 @@ from google_integration.auth.schemas.find_or_create_google_token import (
 )
 from users.services.jwt_service import JwtService, get_jwt_service
 from users.services.user_service import UserService, get_user_service
+from common.log.logger import logger
 
 
 class GoogleAuthService:
@@ -37,7 +33,6 @@ class GoogleAuthService:
         self,
         user_service: UserService,
         google_token_service: GoogleTokenService,
-        google_calendar_service: GoogleCalendarService,
         jwt_service: JwtService,
         db: AsyncSession,
     ) -> None:
@@ -45,33 +40,38 @@ class GoogleAuthService:
         self._user_service = user_service
         self._google_token_service = google_token_service
         self._jwt_service = jwt_service
-        self._google_calendar_service = google_calendar_service
 
     async def _create_flow(self, source: Source) -> Flow:
         return Flow.from_client_config(
-            client_config=google_settings.CLIENT_CONFIG,
+            client_config={
+                "web": {
+                    "client_id": google_settings.GOOGLE_CLIENT_ID,
+                    "client_secret": google_settings.GOOGLE_CLIENT_SECRET,
+                    "auth_uri": google_settings.GOOGLE_AUTH_URI,
+                    "token_uri": google_settings.GOOGLE_TOKEN_URI,
+                }
+            },
             scopes=google_settings.WEBSITE_GOOGLE_SCOPES
-            if source == Source.Website
-            else google_settings.EXTENSION_GOOGLE_SCOPES,
+                if source == Source.Website
+                else google_settings.EXTENSION_GOOGLE_SCOPES,
             redirect_uri=google_settings.REDIRECT_URI,
         )
 
     async def login(
         self,
         request: Request,
-        redirect_to: Source,
+        source: Source,
         lang: str,
     ) -> RedirectResponse:
-        flow = await self._create_flow(redirect_to)
+        flow = await self._create_flow(source)
 
         authorization_url, state = flow.authorization_url(
             access_type="offline",
             prompt="consent",
-            include_granted_scopes="true",
         )
 
         request.session["state"] = state
-        request.session["redirect_to"] = redirect_to.value
+        request.session["source"] = source.value
         request.session["lang"] = lang
 
         return RedirectResponse(authorization_url)
@@ -85,10 +85,10 @@ class GoogleAuthService:
                 detail="Invalid state parameter",
             )
 
-        redirect_to = request.session.get('redirect_to', 'website')
-        lang = request.session.get('lang', 'ru')
+        source = Source(request.session.get('source', 'website'))
+        lang = request.session.get('lang', 'en')
 
-        flow = await self._create_flow(Source(redirect_to))
+        flow = await self._create_flow(source)
         flow.fetch_token(authorization_response=str(request.url))
 
         credentials = flow.credentials
@@ -122,8 +122,8 @@ class GoogleAuthService:
             )
         )
 
-        if Source(redirect_to) == Source.Extension:
-            google_token = await self._google_token_service.find_or_create_google_token(
+        if source == Source.Extension:
+            await self._google_token_service.find_or_create_google_token(
                 FindOrCreateGoogleToken(
                     user=user,
                     access=credentials.token,
@@ -132,20 +132,15 @@ class GoogleAuthService:
                 )
             )
 
-            timezone = await self._google_calendar_service.get_user_timezone(google_token)
-            await self._user_service.set_timezone_for_user(user, str(timezone))
-
         user_data_for_jwt = await self._user_service.get_user_info_for_jwt(user)
 
-        (
-            access_jwt_token,
-            refresh_jwt_token,
-        ) = await self._jwt_service.create_jwt_pair_from_data(user_data_for_jwt)
+        access_jwt_token = await self._jwt_service.create_access_token(user_data_for_jwt)
+        refresh_jwt_token = await self._jwt_service.create_refresh_token(user_data_for_jwt)
 
         return await self._get_redirect(
             access_jwt_token=access_jwt_token,
             refresh_jwt_token=refresh_jwt_token,
-            source=Source(redirect_to),
+            source=source,
             lang=lang,
         )
 
@@ -188,7 +183,7 @@ class GoogleAuthService:
             )
 
     async def refresh_google_token(self, google_token: GoogleToken) -> str:
-        if not google_token or not google_token.refresh_token:
+        if not google_token or not google_token.refresh:
             raise Exception(
                 "google_token_service:refresh_google_token: Google refresh token is missing"
             )
@@ -228,16 +223,12 @@ async def get_google_auth_service(
     google_token_service: Annotated[
         GoogleTokenService, Depends(get_google_token_service)
     ],
-    google_calendar_service: Annotated[
-        GoogleCalendarService, Depends(get_google_calendar_service)
-    ],
     jwt_service: Annotated[JwtService, Depends(get_jwt_service)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> GoogleAuthService:
     return GoogleAuthService(
         user_service=user_service,
         google_token_service=google_token_service,
-        google_calendar_service=google_calendar_service,
         jwt_service=jwt_service,
         db=db,
     )

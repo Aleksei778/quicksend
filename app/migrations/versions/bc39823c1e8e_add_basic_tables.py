@@ -1,8 +1,8 @@
 """add basic tables
 
-Revision ID: 4e5a6c33360e
+Revision ID: bc39823c1e8e
 Revises: 
-Create Date: 2026-01-04 19:28:08.797526
+Create Date: 2026-01-08 08:01:16.996043
 
 """
 from typing import Sequence, Union
@@ -13,7 +13,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '4e5a6c33360e'
+revision: str = 'bc39823c1e8e'
 down_revision: Union[str, None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -28,7 +28,6 @@ def upgrade() -> None:
     sa.Column('email', sqlalchemy_utils.types.email.EmailType(length=255), nullable=False),
     sa.Column('oauth_id', sa.String(length=255), nullable=True),
     sa.Column('picture', sa.String(length=500), nullable=True),
-    sa.Column('timezone', sa.String(length=50), nullable=True),
     sa.Column('created_at', sa.DateTime(), nullable=False),
     sa.Column('updated_at', sa.DateTime(), nullable=False),
     sa.PrimaryKeyConstraint('id')
@@ -52,19 +51,16 @@ def upgrade() -> None:
     op.create_table('google_tokens',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('user_id', sa.Integer(), nullable=True),
-    sa.Column('_access_token', sa.Text(), nullable=False),
-    sa.Column('_refresh_token', sa.Text(), nullable=False),
-    sa.Column('token_type', sa.String(), nullable=False),
-    sa.Column('expires_in', sa.Integer(), nullable=False),
-    sa.Column('expires_at', sa.DateTime(), nullable=False),
-    sa.Column('scope', sa.String(), nullable=False),
+    sa.Column('access', sa.Text(), nullable=False),
+    sa.Column('refresh', sa.Text(), nullable=False),
+    sa.Column('expiry', sa.DateTime(), nullable=False),
     sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('user_id')
     )
-    op.create_index(op.f('ix_google_tokens__access_token'), 'google_tokens', ['_access_token'], unique=False)
-    op.create_index(op.f('ix_google_tokens__refresh_token'), 'google_tokens', ['_refresh_token'], unique=False)
+    op.create_index(op.f('ix_google_tokens_access'), 'google_tokens', ['access'], unique=False)
     op.create_index(op.f('ix_google_tokens_id'), 'google_tokens', ['id'], unique=False)
+    op.create_index(op.f('ix_google_tokens_refresh'), 'google_tokens', ['refresh'], unique=False)
     op.create_table('subscriptions',
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
     sa.Column('plan', sa.Enum('STANDARD', 'PREMIUM', 'TRIAL', name='subscriptionplan'), nullable=True),
@@ -129,9 +125,9 @@ def downgrade() -> None:
     op.drop_table('attachments')
     op.drop_index(op.f('ix_subscriptions_id'), table_name='subscriptions')
     op.drop_table('subscriptions')
+    op.drop_index(op.f('ix_google_tokens_refresh'), table_name='google_tokens')
     op.drop_index(op.f('ix_google_tokens_id'), table_name='google_tokens')
-    op.drop_index(op.f('ix_google_tokens__refresh_token'), table_name='google_tokens')
-    op.drop_index(op.f('ix_google_tokens__access_token'), table_name='google_tokens')
+    op.drop_index(op.f('ix_google_tokens_access'), table_name='google_tokens')
     op.drop_table('google_tokens')
     op.drop_index(op.f('ix_campaigns_id'), table_name='campaigns')
     op.drop_table('campaigns')

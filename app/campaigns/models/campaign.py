@@ -16,9 +16,10 @@ class Campaign(Base):
     status = Column(Enum(CampaignStatus), default=CampaignStatus.DRAFT)
     started_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     end_at = Column(DateTime, nullable=True)
+    timezone = Column(String, nullable=False, default="UTC")
 
     user_id = Column(Integer, ForeignKey("users.id"))
 
     user = relationship("User", back_populates="campaigns")
-    recipients = relationship("Recipient", back_populates="campaigns")
+    recipients = relationship("Recipient", back_populates="campaign")
     attachments = relationship("Attachment", back_populates="campaign")

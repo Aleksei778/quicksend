@@ -5,7 +5,7 @@ from cryptography.fernet import Fernet
 
 from common.config.base_config import base_settings
 
-security = HTTPBearer()
+security = HTTPBearer(auto_error=False)
 
 raw_key = base_settings.ENCRYPTION_KEY.encode()
 key = base64.urlsafe_b64encode(hashlib.sha256(raw_key).digest())
