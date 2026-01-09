@@ -2,15 +2,15 @@ from logging.config import fileConfig
 from sqlalchemy import engine_from_config, pool
 from alembic import context
 
-from common.db.database import Base
-from common.config.base_config import base_settings
-from users.models.user import User
-from campaigns.models.campaign import Campaign
-from campaigns.models.attachment import Attachment
-from campaigns.models.recipient import Recipient
-from google_integration.auth.models.google_token import GoogleToken
-from subscriptions.models.subscription import Subscription
-from payments.models.payment import Payment
+from app.common.db.database import Base
+from app.common.config.base_config import base_settings
+from app.users.models.user import User
+from app.campaigns.models.campaign import Campaign
+from app.campaigns.models.attachment import Attachment
+from app.campaigns.models.recipient import Recipient
+from app.google_integration.auth.models.google_token import GoogleToken
+from app.subscriptions.models.subscription import Subscription
+from app.payments.models.payment import Payment
 
 config = context.config
 

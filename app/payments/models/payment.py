@@ -11,10 +11,10 @@ from sqlalchemy import (
     DECIMAL,
 )
 
-from common.db.database import Base
-from payments.enum.provider import PaymentProvider as PaymentProviderEnum
-from payments.enum.payment_status import PaymentStatus as PaymentStatusEnum
-from payments.enum.currency import Currency as CurrencyEnum
+from app.common.db.database import Base
+from app.payments.enum.provider import PaymentProvider as PaymentProviderEnum
+from app.payments.enum.payment_status import PaymentStatus as PaymentStatusEnum
+from app.payments.enum.currency import Currency as CurrencyEnum
 
 
 class Payment(Base):

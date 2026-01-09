@@ -2,10 +2,10 @@ from decimal import Decimal
 from typing import Optional
 from pydantic import BaseModel, ConfigDict
 
-from payments.enum.currency import Currency as CurrencyEnum
-from payments.enum.provider import PaymentProvider as PaymentProviderEnum
-from subscriptions.models.subscription import Subscription
-from users.models.user import User
+from app.payments.enum.currency import Currency as CurrencyEnum
+from app.payments.enum.provider import PaymentProvider as PaymentProviderEnum
+from app.subscriptions.models.subscription import Subscription
+from app.users.models.user import User
 
 
 class CreatePayment(BaseModel):

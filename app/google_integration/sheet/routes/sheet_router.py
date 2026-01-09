@@ -2,22 +2,18 @@ from typing import Annotated
 from fastapi import HTTPException, Depends, routing, status
 from starlette.responses import HTMLResponse, JSONResponse
 
-from google_integration.auth.services.google_auth_service import (
-    GoogleAuthService,
-    get_google_auth_service,
-)
-from google_integration.auth.services.google_token_service import (
+from app.google_integration.auth.services.google_token_service import (
     GoogleTokenService,
     get_google_token_service,
 )
-from google_integration.sheet.schemas.sheet_request import SheetRequest
-from google_integration.sheet.services.google_sheets_service import (
+from app.google_integration.sheet.schemas.sheet_request import SheetRequest
+from app.google_integration.sheet.services.google_sheets_service import (
     GoogleSheetsService,
     get_google_sheets_service,
 )
-from users.dependencies.get_current_user import get_current_user
-from users.models.user import User
-from common.log.logger import logger
+from app.users.dependencies.get_current_user import get_current_user
+from app.users.models.user import User
+from app.common.log.logger import logger
 
 
 google_sheets_router = routing.APIRouter(prefix="/googlesheet", tags=["sheets"])
@@ -33,7 +29,6 @@ async def parse_emails_from_spreadsheet(
     google_sheets_service: Annotated[
         GoogleSheetsService, Depends(get_google_sheets_service)
     ],
-    google_auth_service: Annotated[GoogleAuthService, Depends(get_google_auth_service)],
 ) -> JSONResponse | None:
     try:
         if not current_user:
@@ -51,7 +46,7 @@ async def parse_emails_from_spreadsheet(
             )
 
         if google_token.is_expired:
-            await google_auth_service.refresh_google_token(google_token)
+            await google_token_service.refresh_google_token(google_token)
 
         emails = await google_sheets_service.parse_emails_from_spreadsheet(
             spreadsheet_id=request.spreadsheet_id,

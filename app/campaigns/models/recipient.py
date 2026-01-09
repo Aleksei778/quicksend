@@ -2,7 +2,7 @@ from sqlalchemy import Column, ForeignKey, DateTime, Integer
 from sqlalchemy.orm import relationship
 from sqlalchemy_utils import EmailType
 
-from common.db.database import Base
+from app.common.db.database import Base
 
 
 class Recipient(Base):

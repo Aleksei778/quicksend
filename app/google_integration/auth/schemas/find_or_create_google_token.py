@@ -1,7 +1,7 @@
 from datetime import datetime
 from pydantic import BaseModel, ConfigDict
 
-from users.models.user import User
+from app.users.models.user import User
 
 
 class FindOrCreateGoogleToken(BaseModel):

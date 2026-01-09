@@ -2,9 +2,9 @@ from decimal import Decimal
 from typing import Optional
 from pydantic import Field, BaseModel
 
-from payments.enum.currency import Currency
-from payments.enum.provider import PaymentProvider
-from subscriptions.enum.plan import SubscriptionPlan
+from app.payments.enum.currency import Currency
+from app.payments.enum.provider import PaymentProvider
+from app.subscriptions.enum.plan import SubscriptionPlan
 
 
 class CreatePaymentRequest(BaseModel):

@@ -1,4 +1,4 @@
-FROM python:3.12-slim
+FROM python:3.12-slim AS base
 
 WORKDIR /app
 
@@ -15,9 +15,15 @@ RUN uv pip install --system -r pyproject.toml
 
 COPY . .
 
-ENV PYTHONPATH=/app/app \
+ENV PYTHONPATH=/app \
     PYTHONUNBUFFERED=1
+
+FROM base AS app
 
 EXPOSE 8000
 
 CMD ["python", "app/main.py"]
+
+FROM base AS consumer
+
+CMD ["python", "consumer/consumer.py"]

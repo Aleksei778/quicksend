@@ -6,18 +6,20 @@ import uvicorn
 from datetime import datetime
 from starlette.middleware.sessions import SessionMiddleware
 
-from google_integration.auth.routes.google_auth_routes import google_auth_router
-from google_integration.sheet.routes.sheet_router import google_sheets_router
-from users.routes.jwt_routes import jwt_router
-from subscriptions.routes.subscription_routes import subscription_router
-from campaigns.routes.campaign_routes import campaign_router
-from common.log.logger import logger
-from common.config.base_config import base_settings
-from common.redis.redis_client import close_redis_client
+from app.google_integration.auth.routes.google_auth_routes import google_auth_router
+from app.google_integration.sheet.routes.sheet_router import google_sheets_router
+from app.users.routes.jwt_routes import jwt_router
+from app.subscriptions.routes.subscription_routes import subscription_router
+from app.campaigns.routes.campaign_routes import campaign_router
+from app.common.log.logger import logger
+from app.common.kafka.setup import create_kafka_topic_if_not_exists
+from app.common.config.base_config import base_settings
+from app.common.redis.redis_client import close_redis_client
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
+    await create_kafka_topic_if_not_exists()
     logger.info("✅ App started")
     yield
     logger.info("❌ App ended")

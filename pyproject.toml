@@ -33,4 +33,5 @@ dependencies = [
     "asyncpg>=0.31.0",
     "ruff",
     "itsdangerous>=2.2.0",
+    "aiokafka>=0.13.0",
 ]

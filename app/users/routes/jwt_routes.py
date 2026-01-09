@@ -2,11 +2,11 @@ from fastapi import APIRouter, Depends, HTTPException, status, Response
 from fastapi.responses import JSONResponse
 from typing import Annotated
 
-from google_integration.auth.enum.source import Source
-from users.config.jwt_config import jwt_settings
-from users.models.user import User
-from users.dependencies.get_current_user import get_current_user, get_current_user_for_refresh
-from users.services.jwt_service import JwtService, get_jwt_service
+from app.google_integration.auth.enum.source import Source
+from app.users.config.jwt_config import jwt_settings
+from app.users.models.user import User
+from app.users.dependencies.get_current_user import get_current_user, get_current_user_for_refresh
+from app.users.services.jwt_service import JwtService, get_jwt_service
 
 jwt_router = APIRouter(prefix="/auth/jwt", tags=["auth_jwt"])
 

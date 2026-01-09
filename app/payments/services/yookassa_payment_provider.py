@@ -6,12 +6,12 @@ from datetime import datetime
 import uuid
 from typing import Dict, Any, Optional
 
-from payments.schemas.base.payment_result import PaymentResult
-from payments.schemas.base.payment_status import PaymentStatus
-from payments.schemas.base.refund_result import RefundResult
-from payments.services.base_payment_provider import BasePaymentProvider
-from payments.enum.currency import Currency
-from common.log.logger import logger
+from app.payments.schemas.base.payment_result import PaymentResult
+from app.payments.schemas.base.payment_status import PaymentStatus
+from app.payments.schemas.base.refund_result import RefundResult
+from app.payments.services.base_payment_provider import BasePaymentProvider
+from app.payments.enum.currency import Currency
+from app.common.log.logger import logger
 
 
 class YookassaPaymentProvider(BasePaymentProvider):

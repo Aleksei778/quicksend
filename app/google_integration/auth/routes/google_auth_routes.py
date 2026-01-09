@@ -2,8 +2,8 @@ from typing import Annotated
 from fastapi import APIRouter, Request, Depends
 from fastapi.responses import RedirectResponse
 
-from google_integration.auth.enum.source import Source
-from google_integration.auth.services.google_auth_service import (
+from app.google_integration.auth.enum.source import Source
+from app.google_integration.auth.services.google_auth_service import (
     GoogleAuthService,
     get_google_auth_service,
 )

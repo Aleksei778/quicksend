@@ -1,7 +1,7 @@
 from typing import Optional
 from pydantic import BaseModel, EmailStr, ConfigDict
 
-from campaigns.models.attachment import Attachment
+from app.campaigns.models.attachment import Attachment
 
 
 class CreateMessage(BaseModel):

@@ -2,8 +2,8 @@ from payments.services.base_payment_provider import BasePaymentProvider
 from payments.enum.provider import PaymentProvider
 from payments.services.yookassa_payment_provider import YookassaPaymentProvider
 
-from payments.config.payment_config import payment_settings
-from common.log.logger import logger
+from app.payments.config.payment_config import payment_settings
+from app.common.log.logger import logger
 
 
 class PaymentProviderFactory:

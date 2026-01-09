@@ -3,12 +3,12 @@ from datetime import datetime
 
 from kombu import Queue, Exchange
 
-from campaigns.models.campaign import Campaign
-from campaigns.schemas.create_message import CreateMessage
-from campaigns.services.campaign_service import CampaignService
-from common.celery.celery_app import celery_app
-from common.log.logger import logger
-from google_integration.gmail.services.gmail_service import GoogleGmailService
+from app.campaigns.models.campaign import Campaign
+from app.campaigns.schemas.create_message import CreateMessage
+from app.campaigns.services.campaign_service import CampaignService
+from app.common.celery.celery_app import celery_app
+from app.common.log.logger import logger
+from app.google_integration.gmail.services.gmail_service import GoogleGmailService
 
 
 subscriptions_exchange = Exchange(name="subscriptions", type="direct")

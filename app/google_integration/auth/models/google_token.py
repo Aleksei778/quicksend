@@ -8,8 +8,8 @@ from sqlalchemy import (
     DateTime,
 )
 
-from common.db.database import Base
-from common.security.security import decrypt, encrypt
+from app.common.db.database import Base
+from app.common.security.security import decrypt, encrypt
 
 
 class GoogleToken(Base):

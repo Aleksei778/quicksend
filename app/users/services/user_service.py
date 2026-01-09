@@ -4,9 +4,9 @@ from pydantic import EmailStr
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from common.db.database import get_db
-from users.models.user import User
-from users.schemas.find_or_create_user import FindOrCreateUser
+from app.common.db.database import get_db
+from app.users.models.user import User
+from app.users.schemas.find_or_create_user import FindOrCreateUser
 
 
 class UserService:

@@ -1,31 +1,22 @@
-import asyncio
 from typing import Annotated
 from fastapi import Request, HTTPException, Depends, status
 from fastapi.responses import RedirectResponse
 from google_auth_oauthlib.flow import Flow
 from googleapiclient.discovery import build
-from google.auth.transport.requests import Request as GoogleRequest
-from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from common.config.base_config import base_settings
-from common.db.database import get_db
-from google_integration.auth.enum.source import Source
-from google_integration.auth.models.google_token import GoogleToken
-from google_integration.auth.services.google_token_service import (
-    GoogleTokenService,
-    get_google_token_service,
-)
-from google_integration.auth.utils.credentials import create_credentials
-from google_integration.config.google_config import google_settings
-from users.config.jwt_config import jwt_settings
-from users.schemas.find_or_create_user import FindOrCreateUser
-from google_integration.auth.schemas.find_or_create_google_token import (
-    FindOrCreateGoogleToken,
-)
-from users.services.jwt_service import JwtService, get_jwt_service
-from users.services.user_service import UserService, get_user_service
-from common.log.logger import logger
+from app.common.config.base_config import base_settings
+from app.common.db.database import get_db
+from app.google_integration.auth.enum.source import Source
+from app.google_integration.auth.services.google_token_service import GoogleTokenService, get_google_token_service
+from app.google_integration.config.google_config import google_settings
+from app.subscriptions.services.subscription_service import SubscriptionService, get_subscription_service
+from app.users.config.jwt_config import jwt_settings
+from app.users.schemas.find_or_create_user import FindOrCreateUser
+from app.google_integration.auth.schemas.find_or_create_google_token import FindOrCreateGoogleToken
+from app.users.services.jwt_service import JwtService, get_jwt_service
+from app.users.services.user_service import UserService, get_user_service
+from app.common.log.logger import logger
 
 
 class GoogleAuthService:
@@ -34,12 +25,14 @@ class GoogleAuthService:
         user_service: UserService,
         google_token_service: GoogleTokenService,
         jwt_service: JwtService,
+        subscription_service: SubscriptionService,
         db: AsyncSession,
     ) -> None:
         self._db = db
         self._user_service = user_service
         self._google_token_service = google_token_service
         self._jwt_service = jwt_service
+        self._subscription_service = subscription_service
 
     async def _create_flow(self, source: Source) -> Flow:
         return Flow.from_client_config(
@@ -132,6 +125,8 @@ class GoogleAuthService:
                 )
             )
 
+            await self._subscription_service.create_trial(user)
+
         user_data_for_jwt = await self._user_service.get_user_info_for_jwt(user)
 
         access_jwt_token = await self._jwt_service.create_access_token(user_data_for_jwt)
@@ -182,41 +177,6 @@ class GoogleAuthService:
                 + f"&refresh_jwt_token={refresh_jwt_token}"
             )
 
-    async def refresh_google_token(self, google_token: GoogleToken) -> str:
-        if not google_token or not google_token.refresh:
-            raise Exception(
-                "google_token_service:refresh_google_token: Google refresh token is missing"
-            )
-
-        try:
-            credentials = await create_credentials(
-                google_token=google_token,
-                scopes=None,
-            )
-
-            loop = asyncio.get_event_loop()
-            await loop.run_in_executor(None, credentials.refresh, GoogleRequest())
-
-            stmt = (
-                update(GoogleToken)
-                .where(GoogleToken.id == google_token.id)
-                .values(
-                    access_token=credentials.token,
-                    expiry=credentials.expiry,
-                )
-            )
-            await self._db.execute(stmt)
-            await self._db.commit()
-
-            return credentials.token
-
-        except Exception as e:
-            await self._db.rollback()
-
-            raise Exception(
-                f"google_token_service:refresh_google_token: Failed to refresh token: {str(e)}"
-            )
-
 
 async def get_google_auth_service(
     user_service: Annotated[UserService, Depends(get_user_service)],
@@ -224,11 +184,13 @@ async def get_google_auth_service(
         GoogleTokenService, Depends(get_google_token_service)
     ],
     jwt_service: Annotated[JwtService, Depends(get_jwt_service)],
+    subscription_service: Annotated[SubscriptionService, Depends(get_subscription_service)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> GoogleAuthService:
     return GoogleAuthService(
         user_service=user_service,
         google_token_service=google_token_service,
         jwt_service=jwt_service,
-        db=db,
+        subscription_service=subscription_service,
+        db=db
     )

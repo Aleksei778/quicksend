@@ -9,7 +9,7 @@ from sqlalchemy import (
     Text,
 )
 
-from common.db.database import Base
+from app.common.db.database import Base
 
 
 class Attachment(Base):

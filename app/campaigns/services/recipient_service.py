@@ -5,10 +5,10 @@ from sqlalchemy import func, Date, cast
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import date
 
-from campaigns.models.campaign import Campaign
-from campaigns.models.recipient import Recipient
-from common.db.database import get_db
-from users.models.user import User
+from app.campaigns.models.campaign import Campaign
+from app.campaigns.models.recipient import Recipient
+from app.common.db.database import get_db
+from app.users.models.user import User
 
 
 class RecipientService:

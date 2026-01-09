@@ -1,8 +1,8 @@
 import redis.asyncio as aioredis
 from redis.asyncio import Redis
 
-from common.config.base_config import base_settings
-from common.log.logger import logger
+from app.common.config.base_config import base_settings
+from app.common.log.logger import logger
 
 _redis_client: Redis | None = None
 

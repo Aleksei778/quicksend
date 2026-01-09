@@ -1,7 +1,7 @@
 from loguru import logger
 from seqlog import SeqLogHandler
 
-from common.config.base_config import base_settings
+from app.common.config.base_config import base_settings
 
 handler = SeqLogHandler(
     server_url=base_settings.SEQ_URL,

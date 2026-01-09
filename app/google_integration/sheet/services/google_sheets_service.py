@@ -4,8 +4,8 @@ from fastapi import HTTPException
 from googleapiclient.discovery import build
 from starlette import status
 
-from google_integration.auth.models.google_token import GoogleToken
-from google_integration.auth.utils.credentials import create_credentials
+from app.google_integration.auth.models.google_token import GoogleToken
+from app.google_integration.auth.utils.credentials import create_credentials
 
 
 class GoogleSheetsService:
@@ -28,7 +28,7 @@ class GoogleSheetsService:
         google_token: GoogleToken,
     ) -> list[str]:
         try:
-            sheets_service = await self.get_google_sheets_service(google_token)\
+            sheets_service = await self.get_google_sheets_service(google_token)
 
             result = await asyncio.to_thread(
                 lambda: sheets_service

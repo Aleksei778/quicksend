@@ -2,10 +2,10 @@ from abc import ABC, abstractmethod
 from typing import Optional, Dict, Any
 from decimal import Decimal
 
-from payments.enum.currency import Currency
-from payments.schemas.base.payment_status import PaymentStatus
-from payments.schemas.base.payment_result import PaymentResult
-from payments.schemas.base.refund_result import RefundResult
+from app.payments.enum.currency import Currency
+from app.payments.schemas.base.payment_status import PaymentStatus
+from app.payments.schemas.base.payment_result import PaymentResult
+from app.payments.schemas.base.refund_result import RefundResult
 
 
 class BasePaymentProvider(ABC):

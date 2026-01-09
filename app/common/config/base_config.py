@@ -5,6 +5,12 @@ class BaseSettings(BasePydanticSettings):
     BACKEND_URL: str = ""
     FRONTEND_URL: str = ""
     EXTENSION_ID: str = ""
+    KAFKA_TOPIC: str = ""
+    KAFKA_BOOTSTRAP_SERVERS: str = ""
+    KAFKA_NUM_PARTITIONS: int = 5
+    KAFKA_REPLICATION_FACTOR: int = 1
+    KAFKA_CONSUMER_MAX_RETRIES: int = 5
+    KAFKA_CONSUMER_BASE_BACKOFF: int = 1
     DB_PORT: int = 5432
     DB_HOST: str = ""
     DB_NAME: str = ""

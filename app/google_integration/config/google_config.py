@@ -1,7 +1,6 @@
-from typing import Any
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from common.config.base_config import base_settings
+from app.common.config.base_config import base_settings
 
 
 class GoogleSettings(BaseSettings):

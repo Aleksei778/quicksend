@@ -2,7 +2,7 @@ from pydantic import BaseModel
 from decimal import Decimal
 from typing import Optional, Dict, Any
 
-from payments.enum.currency import Currency
+from app.payments.enum.currency import Currency
 
 
 class PaymentResult(BaseModel):

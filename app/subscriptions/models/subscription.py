@@ -2,8 +2,8 @@ from sqlalchemy.orm import relationship
 from datetime import datetime
 from sqlalchemy import Column, Integer, Enum, Boolean, DateTime, ForeignKey
 
-from common.db.database import Base
-from subscriptions.enum.plan import SubscriptionPlan
+from app.common.db.database import Base
+from app.subscriptions.enum.plan import SubscriptionPlan
 
 
 class Subscription(Base):
@@ -13,9 +13,9 @@ class Subscription(Base):
     plan = Column(Enum(SubscriptionPlan))
     is_active = Column(Boolean, default=True)
     auto_renew = Column(Boolean, default=False)
-    started_at = Column(DateTime, nullable=False, default=datetime.utcnow)
-    end_at = Column(DateTime, nullable=False)
-    canceled_at = Column(DateTime, nullable=True)
+    started_at = Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+    end_at = Column(DateTime(timezone=True), nullable=False)
+    canceled_at = Column(DateTime(timezone=True), nullable=True)
     failed_payment_attempts = Column(Integer, default=0)
 
     user_id = Column(Integer, ForeignKey("users.id"))

@@ -3,8 +3,8 @@ from decimal import Decimal
 from typing import Optional
 from pydantic import BaseModel
 
-from payments.enum.currency import Currency
-from payments.enum.payment_status import PaymentStatus
+from app.payments.enum.currency import Currency
+from app.payments.enum.payment_status import PaymentStatus
 
 
 class PaymentResponse(BaseModel):

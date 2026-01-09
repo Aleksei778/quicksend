@@ -9,10 +9,10 @@ from sqlalchemy import func, Date, cast
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import date
 
-from campaigns.models.attachment import Attachment
-from campaigns.models.campaign import Campaign
-from common.db.database import get_db
-from users.models.user import User
+from app.campaigns.models.attachment import Attachment
+from app.campaigns.models.campaign import Campaign
+from app.common.db.database import get_db
+from app.users.models.user import User
 
 
 class AttachmentService:

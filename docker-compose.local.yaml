@@ -4,6 +4,7 @@ services:
     build:
       context: .
       dockerfile: docker/app/Dockerfile
+      target: app
     container_name: quicksend_app
     volumes:
       - ./:/app/
@@ -31,17 +32,18 @@ services:
       default:
         ipv4_address: 172.70.0.3
 
-  rabbitmq:
-    image: rabbitmq:4.2-management-alpine
-    container_name: quicksend_rabbitmq
-    ports:
-      - "5672:5672"
-      - "15672:15672"
+  kafka:
+    image: bitnami/kafka:latest
+    container_name: quicksend_kafka
     environment:
-      RABBITMQ_DEFAULT_USER: "${RABBITMQ_DEFAULT_USER}"
-      RABBITMQ_DEFAULT_PASS: "${RABBITMQ_DEFAULT_PASS}"
+      KAFKA_CFG_LISTENERS: "PLAINTEXT://:9092,CONTROLLER://:9093"
+      KAFKA_CFG_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+      KAFKA_CFG_PROCESS_ROLES: "broker,controller"
+      KAFKA_CFG_NODE_ID: "1"
+      KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: "1@localhost:9093"
+      ALLOW_PLAINTEXT_LISTENER: "yes"
     volumes:
-      - rabbitmq_data:/var/lib/rabbitmq
+      - kafka_data:/bitnami/kafka
     networks:
       default:
         ipv4_address: 172.70.0.4
@@ -87,6 +89,21 @@ services:
       default:
         ipv4_address: 172.70.0.7
 
+  consumer:
+    build:
+      context: .
+      dockerfile: docker/app/Dockerfile
+      target: consumer
+    container_name: quicksend_consumer
+    volumes:
+      - ./:/app/
+    env_file:
+      - .env
+    restart: unless-stopped
+    networks:
+      default:
+        ipv4_address: 172.70.0.8
+
 networks:
   default:
     name: ${DOCKER_NETWORK}
@@ -95,5 +112,5 @@ networks:
 volumes:
   redis_data:
   postgres_data:
-  rabbitmq_data:
   seq_data:
+  kafka_data:

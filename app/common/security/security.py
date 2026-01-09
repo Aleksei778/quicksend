@@ -3,7 +3,7 @@ import hashlib
 from fastapi.security import HTTPBearer
 from cryptography.fernet import Fernet
 
-from common.config.base_config import base_settings
+from app.common.config.base_config import base_settings
 
 security = HTTPBearer(auto_error=False)
 

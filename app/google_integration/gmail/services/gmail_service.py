@@ -4,18 +4,11 @@ from fastapi import HTTPException, status, Depends
 from googleapiclient.discovery import build
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from common.db.database import get_db
-from google_integration.auth.models.google_token import GoogleToken
-from google_integration.auth.services.google_auth_service import (
-    GoogleAuthService,
-    get_google_auth_service,
-)
-from google_integration.auth.services.google_token_service import (
-    GoogleTokenService,
-    get_google_token_service,
-)
-from google_integration.auth.utils.credentials import create_credentials
-from users.models.user import User
+from app.common.db.database import get_db
+from app.google_integration.auth.models.google_token import GoogleToken
+from app.google_integration.auth.services.google_token_service import GoogleTokenService, get_google_token_service
+from app.google_integration.auth.utils.credentials import create_credentials
+from app.users.models.user import User
 
 
 class GoogleGmailService:
@@ -23,10 +16,8 @@ class GoogleGmailService:
         self,
         db: AsyncSession,
         google_token_service: GoogleTokenService,
-        google_auth_service: GoogleAuthService,
     ) -> None:
         self._google_token_service = google_token_service
-        self._google_auth_service = google_auth_service
         self._db = db
 
     async def get_google_gmail_service_for_token(
@@ -58,7 +49,7 @@ class GoogleGmailService:
             )
 
         if google_token.is_expired:
-            await self._google_auth_service.refresh_google_token(google_token)
+            await self._google_token_service.refresh_google_token(google_token)
 
         gmail_service = await self.get_google_gmail_service_for_token(google_token)
 
@@ -78,10 +69,8 @@ async def get_google_gmail_service(
     google_token_service: Annotated[
         GoogleTokenService, Depends(get_google_token_service)
     ],
-    google_auth_service: Annotated[GoogleAuthService, Depends(get_google_auth_service)],
 ) -> GoogleGmailService:
     return GoogleGmailService(
         google_token_service=google_token_service,
-        google_auth_service=google_auth_service,
         db=db,
     )

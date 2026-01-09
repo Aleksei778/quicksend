@@ -2,8 +2,8 @@ from sqlalchemy.orm import relationship
 from sqlalchemy import Column, Integer, String, DateTime, Text, ForeignKey, Enum
 from datetime import datetime
 
-from common.db.database import Base
-from campaigns.enum.campaign_status import CampaignStatus
+from app.common.db.database import Base
+from app.campaigns.enum.campaign_status import CampaignStatus
 
 
 class Campaign(Base):

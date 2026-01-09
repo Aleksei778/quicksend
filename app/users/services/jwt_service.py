@@ -3,9 +3,9 @@ from datetime import datetime, timedelta, UTC
 from typing import Any, Optional, Annotated
 from fastapi import HTTPException, status, Depends
 
-from users.config.jwt_config import jwt_settings
-from users.services.user_service import UserService, get_user_service
-from common.log.logger import logger
+from app.users.config.jwt_config import jwt_settings
+from app.users.services.user_service import UserService, get_user_service
+from app.common.log.logger import logger
 
 
 class JwtService:

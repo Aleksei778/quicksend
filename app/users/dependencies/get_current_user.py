@@ -2,11 +2,11 @@ from typing import Annotated
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials
 
-from users.services.user_service import UserService, get_user_service
-from common.security.security import security
-from common.log.logger import logger
-from users.services.jwt_service import JwtService, get_jwt_service
-from users.models.user import User
+from app.users.services.user_service import UserService, get_user_service
+from app.common.security.security import security
+from app.common.log.logger import logger
+from app.users.services.jwt_service import JwtService, get_jwt_service
+from app.users.models.user import User
 
 
 async def get_current_user(

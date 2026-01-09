@@ -20,7 +20,7 @@ docker-network:
 	@env UID=${UID} docker network create --driver bridge --subnet=172.70.0.0/16 --gateway=172.70.0.1 ${NETWORK} || true
 
 docker-up:
-	@env UID=${UID} $(COMPOSE) up -d --remove-orphans
+	@env UID=${UID} $(COMPOSE) up --build -d --remove-orphans
 
 docker-down:
 	@env UID=${UID} $(COMPOSE) down

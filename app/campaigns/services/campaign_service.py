@@ -10,12 +10,12 @@ from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import date, datetime, timedelta
 
-from campaigns.models.campaign import Campaign
-from campaigns.config.campaign_config import campaign_settings
-from campaigns.schemas.create_message import CreateMessage
-from common.db.database import get_db
-from common.redis.redis_client import get_redis_client
-from users.models.user import User
+from app.campaigns.models.campaign import Campaign
+from app.campaigns.config.campaign_config import campaign_settings
+from app.campaigns.schemas.create_message import CreateMessage
+from app.common.db.database import get_db
+from app.common.redis.redis_client import get_redis_client
+from app.users.models.user import User
 
 
 class CampaignService:
@@ -134,15 +134,13 @@ class CampaignService:
 
     async def increment_user_sent_count(self, user: User) -> int:
         key = f"sent:{user.id}:{date.today()}"
-        new_count = await self._redis_client.incr(key)
+        new_count = await self._redis_client.incrby(key)
 
         if new_count == 1:
             await self._redis_client.expire(key, timedelta(days=1))
 
         return new_count
 
-    async def find_by_id(self, campaign_id: int) -> Campaign | None:
-        return await self._db.get(Campaign, campaign_id)
 
 async def get_campaign_service(
     db: Annotated[AsyncSession, Depends(get_db)],

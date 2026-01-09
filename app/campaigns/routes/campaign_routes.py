@@ -5,24 +5,21 @@ import pytz
 from fastapi import APIRouter, Depends, HTTPException, Form, UploadFile, status, File
 from starlette.responses import JSONResponse
 
-from campaigns.services.attachment_service import (
+from app.campaigns.services.attachment_service import (
     AttachmentService,
     get_attachment_service,
 )
-from campaigns.services.campaign_service import CampaignService, get_campaign_service
-from campaigns.services.recipient_service import RecipientService, get_recipient_service
-from common.log.logger import logger
-from google_integration.gmail.services.gmail_service import (
-    GoogleGmailService,
-    get_google_gmail_service,
-)
-from subscriptions.services.subscription_service import (
+from app.campaigns.services.campaign_service import CampaignService, get_campaign_service
+from app.campaigns.services.recipient_service import RecipientService, get_recipient_service
+from app.common.log.logger import logger
+from app.subscriptions.services.subscription_service import (
     SubscriptionService,
     get_subscription_service,
 )
-from users.dependencies.get_current_user import get_current_user
-from users.models.user import User
-from campaigns.tasks.send_emails_task import send_emails_task
+from app.users.dependencies.get_current_user import get_current_user
+from app.users.models.user import User
+# from campaigns.tasks.send_emails_task import send_emails_task
+from app.campaigns.services.send_service import SendService, get_send_service
 
 
 campaign_router = APIRouter(prefix="/campaign", tags=["Campaigns"])
@@ -38,9 +35,7 @@ async def start_campaign(
     subscription_service: Annotated[
         SubscriptionService, Depends(get_subscription_service)
     ],
-    google_gmail_service: Annotated[
-        GoogleGmailService, Depends(get_google_gmail_service)
-    ],
+    send_service: Annotated[SendService, Depends(get_send_service)],
     files: Optional[list[UploadFile]] = File(None),
 ) -> JSONResponse | None:
     try:
@@ -74,29 +69,30 @@ async def start_campaign(
             user=current_user,
         )
 
-        campaign_attachments = []
-        for file in files:
-            prepared_attachment = await attachment_service.prepare_attachment_for_gmail(
-                file
-            )
-
-            campaign_attachment = await attachment_service.create_attachment(
-                campaign=campaign,
-                filename=prepared_attachment["filename"],
-                size=prepared_attachment["size"],
-                mimetype=prepared_attachment["mimetype"],
-                content=prepared_attachment["content"],
-            )
-            campaign_attachments.append(campaign_attachment)
-
         campaign_recipients = []
         for recipient in recipients:
             campaign_recipient = await recipient_service.create_recipient(
                 campaign=campaign,
-                email=recipient["email"],
+                email=recipient,
             )
 
             campaign_recipients.append(campaign_recipient)
+
+        campaign_attachments = []
+        if files:
+            for file in files:
+                prepared_attachment = await attachment_service.prepare_attachment_for_gmail(
+                    file
+                )
+
+                campaign_attachment = await attachment_service.create_attachment(
+                    campaign=campaign,
+                    filename=prepared_attachment["filename"],
+                    size=prepared_attachment["size"],
+                    mimetype=prepared_attachment["mimetype"],
+                    content=prepared_attachment["content"],
+                )
+                campaign_attachments.append(campaign_attachment)
 
         if campaign_data.get("date") and campaign_data.get("time") and campaign_data.get("timezone"):
             scheduled_datetime, timezone = campaign_service.process_time_for_campaign_time(
@@ -104,20 +100,22 @@ async def start_campaign(
                 campaign_time=campaign_data.get("time"),
                 campaign_timezone=campaign_data.get("timezone"),
             )
+
+            # send_emails_task.apply_async(
+            #     args=[campaign.id, campaign_service, subscription_service, google_gmail_service],
+            #     queue="campaigns",
+            #     eta=scheduled_datetime,
+            # )
         else:
             scheduled_datetime = datetime.now(pytz.utc)
             timezone = "UTC"
+
+            await send_service.send_campaign(campaign)
 
         await campaign_service.set_started_at_and_timezone_for_campaign(
             campaign=campaign,
             started_at=scheduled_datetime,
             timezone=timezone,
-        )
-
-        send_emails_task.apply_async(
-            args=[campaign.id, campaign_service, subscription_service, google_gmail_service],
-            queue="campaigns",
-            eta=scheduled_datetime,
         )
 
         return JSONResponse(

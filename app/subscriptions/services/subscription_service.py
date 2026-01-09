@@ -1,17 +1,16 @@
-from datetime import datetime
+from datetime import datetime, UTC, timedelta
 from typing import Annotated
 from fastapi import Depends
 from redis.asyncio import Redis
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from common.db.database import get_db
-from common.redis.redis_client import get_redis_client
-from payments.models.payment import Payment
-from subscriptions.enum.plan import SubscriptionPlan
-from users.models.user import User
-from subscriptions.models.subscription import Subscription
-from campaigns.services.campaign_service import CampaignService, get_campaign_service
+from app.common.db.database import get_db
+from app.common.redis.redis_client import get_redis_client
+from app.subscriptions.enum.plan import SubscriptionPlan
+from app.users.models.user import User
+from app.subscriptions.models.subscription import Subscription
+from app.campaigns.services.campaign_service import CampaignService, get_campaign_service
 
 
 class SubscriptionService:
@@ -32,22 +31,35 @@ class SubscriptionService:
             .where(Subscription.plan == SubscriptionPlan.TRIAL)
         )
 
-        trial_sub = result.scalar_one_or_none()
+        return bool(result.scalar_one_or_none())
 
-        if trial_sub is None:
-            return False
+    async def create_trial(self, user: User) -> None:
+        if await self.is_user_already_used_trial(user=user):
+            return
 
-        return True
+        now = datetime.now(UTC)
+
+        started_at = now
+        end_at = now + timedelta(days=SubscriptionPlan.TRIAL.get_days_count())
+
+        await self.create_subscription(
+            user=user,
+            plan=SubscriptionPlan.TRIAL,
+            started_at=started_at,
+            end_at=end_at,
+        )
 
     async def create_subscription(
         self,
         user: User,
         plan: SubscriptionPlan,
+        started_at: datetime,
         end_at: datetime,
     ) -> Subscription:
         subscription = Subscription(
             user_id=user.id,
             plan=plan,
+            started_at=started_at,
             end_at=end_at,
         )
 
