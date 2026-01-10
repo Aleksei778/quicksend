@@ -2,9 +2,9 @@ from typing import Annotated
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.common.db.database import get_db
-from app.payments.models.payment import Payment
+from app.payments.model import Payment
 from app.payments.schemas.models.create_payment import CreatePayment
+from common.utils.database import get_db
 
 
 class PaymentService:

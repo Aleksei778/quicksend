@@ -2,8 +2,8 @@ from sqlalchemy.orm import relationship
 from sqlalchemy import Column, Integer, String, DateTime, Text, ForeignKey, Enum
 from datetime import datetime
 
-from app.common.db.database import Base
-from app.campaigns.enum.campaign_status import CampaignStatus
+from app.campaigns.enum_ import CampaignStatus
+from common.utils.database import Base
 
 
 class Campaign(Base):
@@ -14,8 +14,8 @@ class Campaign(Base):
     subject = Column(String, nullable=False)
     body_template = Column(Text, nullable=True)
     status = Column(Enum(CampaignStatus), default=CampaignStatus.DRAFT)
-    started_at = Column(DateTime, nullable=False, default=datetime.utcnow)
-    end_at = Column(DateTime, nullable=True)
+    started_at = Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+    end_at = Column(DateTime(timezone=True), nullable=True)
     timezone = Column(String, nullable=False, default="UTC")
 
     user_id = Column(Integer, ForeignKey("users.id"))

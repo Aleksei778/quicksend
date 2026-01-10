@@ -4,7 +4,7 @@ from pydantic import Field, BaseModel
 
 from app.payments.enum.currency import Currency
 from app.payments.enum.provider import PaymentProvider
-from app.subscriptions.enum.plan import SubscriptionPlan
+from app.subscriptions.enum_ import SubscriptionPlan
 
 
 class CreatePaymentRequest(BaseModel):

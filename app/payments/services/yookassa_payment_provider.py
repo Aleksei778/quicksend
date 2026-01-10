@@ -11,7 +11,7 @@ from app.payments.schemas.base.payment_status import PaymentStatus
 from app.payments.schemas.base.refund_result import RefundResult
 from app.payments.services.base_payment_provider import BasePaymentProvider
 from app.payments.enum.currency import Currency
-from app.common.log.logger import logger
+from common.utils.logger import logger
 
 
 class YookassaPaymentProvider(BasePaymentProvider):

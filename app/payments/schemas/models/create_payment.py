@@ -4,8 +4,8 @@ from pydantic import BaseModel, ConfigDict
 
 from app.payments.enum.currency import Currency as CurrencyEnum
 from app.payments.enum.provider import PaymentProvider as PaymentProviderEnum
-from app.subscriptions.models.subscription import Subscription
-from app.users.models.user import User
+from app.subscriptions.model import Subscription
+from common.users.model import User
 
 
 class CreatePayment(BaseModel):

@@ -78,26 +78,19 @@ project-installation: docker-up app-setup db-migrate
 	@echo "Python project was successfully installed."
 
 # === DATABASE MIGRATIONS (Alembic) ===
-db-migrate:
-	@env UID=${UID} $(COMPOSE) exec app alembic upgrade head
-
-# usage: make db-migrate-create message="create users table"
-db-migrate-create:
-	@env UID=${UID} $(COMPOSE) exec app alembic revision --autogenerate -m "$(message)"
-
-# usage: make db-rollback steps=1
-db-rollback:
+# usage: make alembic-downgrade-steps steps=1
+alembic-downgrade-steps:
 	@env UID=${UID} $(COMPOSE) exec app alembic downgrade -$(steps)
 
-db-reset:
+alembic-downgrade-base:
 	@env UID=${UID} $(COMPOSE) exec app alembic downgrade base
+
+# usage: make alembic-downgrade-revision revision=abc123
+alembic-downgrade-revision:
+	@env UID=${UID} $(COMPOSE) exec app alembic downgrade $(revision)
 
 alembic-upgrade:
 	@env UID=${UID} $(COMPOSE) exec app alembic upgrade head
-
-# usage: make alembic-downgrade revision=abc123
-alembic-downgrade:
-	@env UID=${UID} $(COMPOSE) exec app alembic downgrade $(revision)
 
 # usage: make alembic-revision message="add user table"
 alembic-revision:
@@ -105,11 +98,6 @@ alembic-revision:
 
 alembic-current:
 	@env UID=${UID} $(COMPOSE) exec app alembic current
-
-# === DATABASE SEEDING ===
-# usage: make db-seed
-db-seed:
-	@env UID=${UID} $(COMPOSE) exec app python -m app.seeds.run
 
 # === TESTING ===
 test:

@@ -4,10 +4,11 @@ services:
     build:
       context: .
       dockerfile: docker/app/Dockerfile
-      target: app
     container_name: quicksend_app
     volumes:
-      - ./:/app/
+      - ./common:/app/common/
+      - ./app:/app/app/
+      - ./migrations:/app/migrations/
     env_file:
       - .env
     restart: unless-stopped
@@ -92,11 +93,11 @@ services:
   consumer:
     build:
       context: .
-      dockerfile: docker/app/Dockerfile
-      target: consumer
+      dockerfile: docker/consumer/Dockerfile
     container_name: quicksend_consumer
     volumes:
-      - ./:/app/
+      - ./common:/app/common/
+      - ./consumer:/app/consumer/
     env_file:
       - .env
     restart: unless-stopped

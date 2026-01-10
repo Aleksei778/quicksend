@@ -14,12 +14,9 @@ COPY pyproject.toml uv.lock ./
 RUN uv pip install --system -r pyproject.toml
 
 COPY /common .
-COPY /app .
-COPY /migrations .
+COPY /consumer .
 
 ENV PYTHONPATH=/app \
     PYTHONUNBUFFERED=1
 
-EXPOSE 8000
-
-CMD ["python", "app/main.py"]
+CMD ["python", "consumer/main.py"]

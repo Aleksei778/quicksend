@@ -6,19 +6,21 @@ import uvicorn
 from datetime import datetime
 from starlette.middleware.sessions import SessionMiddleware
 
-from app.google_integration.auth.routes.google_auth_routes import google_auth_router
-from app.google_integration.sheet.routes.sheet_router import google_sheets_router
-from app.users.routes.jwt_routes import jwt_router
-from app.subscriptions.routes.subscription_routes import subscription_router
-from app.campaigns.routes.campaign_routes import campaign_router
-from app.common.log.logger import logger
-from app.common.kafka.setup import create_kafka_topic_if_not_exists
-from app.common.config.base_config import base_settings
-from app.common.redis.redis_client import close_redis_client
+from app.google_auth.route import router as google_auth_router
+from app.google_sheets.route import router as google_sheets_router
+from app.jwt_auth.route import router as jwt_router
+from app.subscriptions.route import router as subscription_router
+from app.campaigns.route import router as campaign_router
+from app.utils.kafka.setup import create_kafka_topic_if_not_exists
+from app.utils.redis_ import close_redis_client
+from common.utils.logger import logger
+from common.utils.config import base_config
+from common.users.model import add_relationships_for_app
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
+    add_relationships_for_app()
     await create_kafka_topic_if_not_exists()
     logger.info("✅ App started")
     yield
@@ -51,8 +53,8 @@ async def log_requests(request: Request, call_next: Callable) -> Response:
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        base_settings.FRONTEND_URL,
-        f"chrome-extension://{base_settings.EXTENSION_ID}",
+        base_config.FRONTEND_URL,
+        f"chrome-extension://{base_config.EXTENSION_ID}",
     ],
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
@@ -65,7 +67,7 @@ app.add_middleware(
         "accept",
     ],
 )
-app.add_middleware(SessionMiddleware, secret_key=base_settings.SESSION_SECRET_KEY)
+app.add_middleware(SessionMiddleware, secret_key=base_config.SESSION_SECRET_KEY)
 
 
 api_router = APIRouter(prefix="/api", tags=["Api"])

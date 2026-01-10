@@ -1,0 +1,104 @@
+import jwt
+from datetime import datetime, timedelta, UTC
+from typing import Any, Optional, Annotated
+from fastapi import HTTPException, status, Depends
+
+from app.jwt_auth.config import jwt_config
+from common.users.service import UserService, get_user_service
+from common.utils.logger import logger
+
+
+class JwtService:
+    def __init__(
+        self,
+        user_service: UserService,
+    ) -> None:
+        self._refresh_secret = jwt_config.JWT_REFRESH_SECRET_FOR_AUTH
+        self._user_service = user_service
+
+    async def create_access_token(self, user_data: dict[str, Any]) -> str:
+        to_encode = user_data.copy()
+        expire = datetime.now(UTC) + timedelta(hours=jwt_config.JWT_ACCESS_TOKEN_EXPIRATION_HOURS)
+
+        to_encode.update({"exp": expire, "iat": datetime.now(UTC), "type": "access"})
+
+        return jwt.encode(to_encode, jwt_config.JWT_ACCESS_SECRET_FOR_AUTH, algorithm=jwt_config.JWT_ALGORITHM)
+
+    async def create_refresh_token(self, user_data: dict[str, Any]) -> str:
+        to_encode = user_data.copy()
+        expire = datetime.now(UTC) + timedelta(days=jwt_config.JWT_REFRESH_TOKEN_EXPIRATION_DAYS)
+
+        to_encode.update({"exp": expire, "iat": datetime.now(UTC), "type": "refresh"})
+
+        return jwt.encode(to_encode, jwt_config.JWT_REFRESH_SECRET_FOR_AUTH, algorithm=jwt_config.JWT_ALGORITHM)
+
+    async def verify_access_token(self, token: str) -> Optional[dict[str, Any]]:
+        return await self._verify_token(token, "access", jwt_config.JWT_ACCESS_SECRET_FOR_AUTH)
+
+    async def verify_refresh_token(self, token: str) -> Optional[dict[str, Any]]:
+        return await self._verify_token(token, "refresh", jwt_config.JWT_REFRESH_SECRET_FOR_AUTH)
+
+    async def _verify_token(
+        self,
+        token: str,
+        expected_type: str,
+        secret: str,
+    ) -> dict[str, Any]:
+        try:
+            logger.info(f"Verifying token: {token}")
+            logger.info(f"Type of token: {type(token)}")
+
+            payload = jwt.decode(token, secret, algorithms=[jwt_config.JWT_ALGORITHM])
+
+            if payload.get("type") != expected_type:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail=f"Invalid token type. Expected {expected_type}",
+                )
+
+            return payload
+
+        except jwt.ExpiredSignatureError:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Expired token",
+            )
+
+        except jwt.InvalidTokenError as e:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=f"Invalid token: {str(e)}",
+            )
+
+    async def refresh_jwt_token(self, refresh_token: str) -> tuple[str, str]:
+        payload = await self.verify_refresh_token(refresh_token)
+
+        user_id = payload.get("user_id")
+
+        if user_id is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="No user id provided",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        user = await self._user_service.find_by_id(user_id=user_id)
+
+        if user is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="No user found",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        new_user_data = await self._user_service.get_user_info_for_jwt(user)
+        new_access_token = await self.create_access_token(new_user_data)
+        new_refresh_token = await self.create_refresh_token(new_user_data)
+
+        return new_access_token, new_refresh_token
+
+
+async def get_jwt_service(
+    user_service: Annotated[UserService, Depends(get_user_service)],
+) -> JwtService:
+    return JwtService(user_service)

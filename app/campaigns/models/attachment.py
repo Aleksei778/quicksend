@@ -1,15 +1,8 @@
-from datetime import datetime
 from sqlalchemy.orm import relationship
-from sqlalchemy import (
-    Integer,
-    Column,
-    String,
-    DateTime,
-    ForeignKey,
-    Text,
-)
+from sqlalchemy import Column, Integer, String, DateTime, Text, ForeignKey
+from datetime import datetime
 
-from app.common.db.database import Base
+from common.utils.database import Base
 
 
 class Attachment(Base):

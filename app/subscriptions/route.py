@@ -1,0 +1,96 @@
+from datetime import datetime, timedelta, UTC
+from typing import Annotated
+from fastapi import APIRouter, Depends, status, HTTPException
+from fastapi.responses import JSONResponse
+
+from app.payments.schemas.models.create_payment import CreatePayment
+from app.payments.schemas.routes.create_payment_request import CreatePaymentRequest
+from app.payments.services.payment_service import PaymentService, get_payment_service
+from app.payments.services.provider_factory import PaymentProviderFactory, get_payment_provider_factory
+from app.payments.config import payment_config
+from app.subscriptions.enum_ import SubscriptionPlan
+from app.subscriptions.service import SubscriptionService, get_subscription_service
+from app.jwt_auth.dependency import get_current_user
+from common.users.model import User
+
+
+router = APIRouter(prefix="/subscription", tags=["subscriptions"])
+
+
+@router.post(path="/subscribe")
+async def start_base_premium_subscription(
+    request: CreatePaymentRequest,
+    current_user: Annotated[User, Depends(get_current_user)],
+    payment_provider_factory: Annotated[
+        PaymentProviderFactory, Depends(get_payment_provider_factory)
+    ],
+    payment_service: Annotated[PaymentService, Depends(get_payment_service)],
+    subscription_service: Annotated[
+        SubscriptionService, Depends(get_subscription_service)
+    ],
+) -> JSONResponse:
+    if request.plan == SubscriptionPlan.TRIAL:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Trial plan is another route",
+        )
+
+    subscription = await subscription_service.get_user_active_subscription(current_user)
+
+    if subscription:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Already subscribed",
+        )
+
+    payment_provider_service = payment_provider_factory.create(request.payment_provider)
+
+    payment_result = await payment_provider_service.create_payment(
+        amount=request.amount,
+        currency=request.currency,
+        description=request.description,
+        return_url=payment_config.PAYMENT_RETURN_URL,
+        metadata=request.metadata,
+    )
+
+    subscription = await subscription_service.create_subscription(
+        user=current_user,
+        plan=request.plan,
+        end_at=datetime.now(UTC) + timedelta(days=request.plan.get_days_count()),
+    )
+
+    payment = await payment_service.create_payment(
+        CreatePayment(
+            user=current_user,
+            subscription=subscription,
+            external_payment_id=payment_result.payment_id,
+            provider=request.payment_provider,
+            amount=request.amount,
+            currency=request.currency,
+            description=request.description,
+            payment_method=payment_result.payment_method,
+            metadata=payment_result.metadata,
+        )
+    )
+
+    return JSONResponse(
+        content={
+            "subscription": subscription,
+            "payment": payment,
+            "provider_payment_result": payment_result,
+        },
+        status_code=status.HTTP_201_CREATED,
+    )
+
+@router.get(path="/current")
+async def check_current_subscription(
+    current_user: Annotated[User, Depends(get_current_user)],
+    subscription_service: Annotated[
+        SubscriptionService, Depends(get_subscription_service)
+    ],
+) -> JSONResponse:
+    current_subscription = await subscription_service.get_user_active_subscription(user=current_user)
+
+    return JSONResponse({
+        "plan": current_subscription.plan if current_subscription else "no",
+    })
