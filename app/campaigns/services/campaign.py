@@ -15,6 +15,7 @@ from app.campaigns.models.campaign import Campaign
 from app.campaigns.config import campaign_config
 from app.campaigns.schema import CreateMessage
 from app.utils.redis_ import get_redis_client
+from campaigns.enum_ import CampaignStatus
 from campaigns.services.attachment import AttachmentService, get_attachment_service
 from common.utils.database import get_db
 from common.users.model import User
@@ -93,6 +94,16 @@ class CampaignService:
                 msg.attach(part)
 
         return base64.urlsafe_b64encode(msg.as_bytes()).decode("utf-8")
+
+    async def set_campaign_status(
+        self,
+        campaign: Campaign,
+        campaign_status: CampaignStatus
+    ) -> None:
+        campaign.status = campaign_status
+
+        await self._db.commit()
+        await self._db.refresh(campaign)
 
     async def process_time_for_campaign_time(
         self,

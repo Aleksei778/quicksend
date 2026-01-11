@@ -16,15 +16,19 @@ from app.utils.redis_ import close_redis_client
 from common.utils.logger import logger
 from common.utils.config import base_config
 from common.users.model import add_relationships_for_app
-
+from utils.kafka.producer import init as producer_init, stop as producer_stop
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     add_relationships_for_app()
     await create_kafka_topic_if_not_exists()
+    await producer_init()
     logger.info("✅ App started")
+
     yield
+
     logger.info("❌ App ended")
+    await producer_stop()
     await close_redis_client()
 
 

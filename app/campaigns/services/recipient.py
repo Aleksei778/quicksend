@@ -1,48 +1,37 @@
 from typing import Annotated
 from fastapi import Depends
 from pydantic import EmailStr
-from sqlalchemy import func, Date, cast
+from sqlalchemy import insert
 from sqlalchemy.ext.asyncio import AsyncSession
-from datetime import date
 
 from app.campaigns.models.campaign import Campaign
 from app.campaigns.models.recipient import Recipient
 from common.utils.database import get_db
-from common.users.model import User
 
 
 class RecipientService:
     def __init__(self, db: AsyncSession):
         self._db = db
 
-    async def get_recipients_count_by_date_for_user(
-        self, user: User, camp_date: date
-    ) -> int:
-        result = await self._db.execute(
-            func.sum(Campaign.recipients)
-            .where(Campaign.user_id == user.id)
-            .where(cast(Campaign.started_at, Date) == camp_date)
-        )
-
-        total_count = result.scalar()
-
-        return total_count or 0
-
-    async def create_recipient(
+    async def bulk_create_recipients(
         self,
-        campaign: Campaign,
-        email: EmailStr,
-    ) -> Recipient:
-        recipient = Recipient(
-            email=email,
-            campaign_id=campaign.id,
-        )
+        campaign_id: int,
+        emails: list[EmailStr],
+    ) -> None:
+        recipients_data = [
+            {
+                "campaign_id": campaign_id,
+                "email": str(email)
+            }
+            for email in emails
+        ]
 
-        self._db.add(recipient)
+        stmt = (insert(Recipient)
+                .values(recipients_data)
+                .returning(Recipient))
+
+        await self._db.execute(stmt)
         await self._db.commit()
-        await self._db.refresh(recipient)
-
-        return recipient
 
 
 async def get_recipient_service(

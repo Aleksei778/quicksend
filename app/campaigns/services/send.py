@@ -3,10 +3,10 @@ from typing import Annotated
 
 from app.campaigns.schema import CreateMessage
 from app.campaigns.services.campaign import CampaignService, get_campaign_service
-from app.utils.kafka.producer import GmailProducer, get_gmail_producer
 from app.subscriptions.service import SubscriptionService, get_subscription_service
 from common.utils.logger import logger
 from common.google.gmail.service import GoogleGmailService, get_google_gmail_service
+from utils.kafka.producer import send_message as send_message_to_kafka
 
 
 class SendService:
@@ -15,12 +15,10 @@ class SendService:
         campaign_service: CampaignService,
         subscription_service: SubscriptionService,
         google_gmail_service: GoogleGmailService,
-        gmail_producer: GmailProducer,
     ) -> None:
         self._campaign_service = campaign_service
         self._subscription_service = subscription_service
         self._google_gmail_service = google_gmail_service
-        self._gmail_producer = gmail_producer
 
     async def send_campaign(self, campaign_id: int):
         campaign = await self._campaign_service.eager_get_campaign_for_sending(campaign_id)
@@ -29,8 +27,6 @@ class SendService:
             raise Exception(
                 f"SendService:send_campaign: not found campaign with id {campaign_id}"
             )
-
-        await self._gmail_producer.start_producer()
 
         for recipient in campaign.recipients:
             can_send, remaining = await self._subscription_service.check_if_user_can_send_emails(campaign.user)
@@ -51,7 +47,7 @@ class SendService:
                     )
                 )
 
-                await self._gmail_producer.send_message_to_kafka(
+                await send_message_to_kafka(
                     key=campaign.user.email,
                     data={
                         'message': raw_message,
@@ -64,8 +60,6 @@ class SendService:
             except Exception as e:
                 logger.error(f"Failed to send to {recipient.email}: {str(e)}")
 
-        await self._gmail_producer.stop_producer()
-
         logger.info(
             f"Campaign completed for user {campaign.user}: "
         )
@@ -75,11 +69,9 @@ async def get_send_service(
     campaign_service: Annotated[CampaignService, Depends(get_campaign_service)],
     subscription_service: Annotated[SubscriptionService, Depends(get_subscription_service)],
     google_gmail_service: Annotated[GoogleGmailService, Depends(get_google_gmail_service)],
-    gmail_producer: Annotated[GmailProducer, Depends(get_gmail_producer)]
 ) -> SendService:
     return SendService(
         campaign_service=campaign_service,
         subscription_service=subscription_service,
         google_gmail_service=google_gmail_service,
-        gmail_producer=gmail_producer,
     )

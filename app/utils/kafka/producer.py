@@ -2,31 +2,40 @@ import json
 from aiokafka import AIOKafkaProducer
 
 from common.utils.config import base_config
+from common.utils.logger import logger
 
+producer: AIOKafkaProducer | None = None
 
-class GmailProducer:
-    def __init__(self) -> None:
-        self._producer = AIOKafkaProducer(
-            bootstrap_servers=base_config.KAFKA_BOOTSTRAP_SERVERS
-        )
+async def init() -> None:
+    global producer
 
-    async def start_producer(self):
-        await self._producer.start()
+    if producer is None:
+        try:
+            producer = AIOKafkaProducer(
+                bootstrap_servers=base_config.KAFKA_BOOTSTRAP_SERVERS,
+            )
 
-    async def send_message_to_kafka(
-        self,
-        data: dict,
-        key: str,
-    ) -> None:
-        await self._producer.send_and_wait(
+            await producer.start()
+
+            logger.info(f"✅ Kafka producer started successfully")
+
+        except Exception as e:
+            logger.error(f"❌ Failed to start kafka producer: {e}")
+
+            raise
+
+async def send_message(data: dict, key: str) -> None:
+    if producer:
+        await producer.send(
             base_config.KAFKA_TOPIC,
             json.dumps(data).encode('utf-8'),
             key=str(key).encode('utf-8')
         )
+    else:
+        raise Exception("No kafka producer available")
 
-    async def stop_producer(self):
-        await self._producer.stop()
+async def stop() -> None:
+    global producer
 
-
-async def get_gmail_producer() -> GmailProducer:
-    return GmailProducer()
+    if producer:
+        await producer.stop()

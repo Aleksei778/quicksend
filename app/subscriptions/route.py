@@ -92,5 +92,5 @@ async def check_current_subscription(
     current_subscription = await subscription_service.get_user_active_subscription(user=current_user)
 
     return JSONResponse({
-        "plan": current_subscription.plan if current_subscription else "no",
+        "plan": current_subscription.plan.value if current_subscription else "no",
     })
