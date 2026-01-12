@@ -13,6 +13,8 @@ from app.subscriptions.service import SubscriptionService, get_subscription_serv
 from app.jwt_auth.dependency import get_current_user
 from campaigns.schema import CampaignRequest
 from common.users.model import User
+from common.utils.logger import logger
+
 # from campaigns.tasks.send_emails_task import send_emails_task
 
 
@@ -29,6 +31,8 @@ async def start_campaign(
     subscription_service: Annotated[SubscriptionService, Depends(get_subscription_service)],
     send_service: Annotated[SendService, Depends(get_send_service)],
 ) -> JSONResponse | None:
+    logger.info(f"Received campaign request data: {campaign_request.model_dump()}")
+
     can_send, message = await subscription_service.check_if_user_can_send_emails(
         current_user
     )

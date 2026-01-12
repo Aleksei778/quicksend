@@ -48,6 +48,12 @@ services:
     networks:
       default:
         ipv4_address: 172.70.0.4
+    healthcheck:
+      test: [ "CMD", "kafka-topics", "--bootstrap-server", "localhost:9092", "--list" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   db:
     image: postgres:17
