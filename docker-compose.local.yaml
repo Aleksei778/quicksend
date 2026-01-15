@@ -9,6 +9,7 @@ services:
       - ./common:/app/common/
       - ./app:/app/app/
       - ./migrations:/app/migrations/
+      - ./alembic.ini:/app/alembic.ini
     env_file:
       - .env
     restart: unless-stopped
@@ -34,17 +35,21 @@ services:
         ipv4_address: 172.70.0.3
 
   kafka:
-    image: bitnami/kafka:latest
+    image: apache/kafka:latest
     container_name: quicksend_kafka
     environment:
-      KAFKA_CFG_LISTENERS: "PLAINTEXT://:9092,CONTROLLER://:9093"
-      KAFKA_CFG_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
-      KAFKA_CFG_PROCESS_ROLES: "broker,controller"
-      KAFKA_CFG_NODE_ID: "1"
-      KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: "1@localhost:9093"
-      ALLOW_PLAINTEXT_LISTENER: "yes"
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: "broker,controller"
+      KAFKA_CONTROLLER_QUORUM_VOTERS: "1@kafka:9093"
+      KAFKA_LISTENERS: "PLAINTEXT://:9092,CONTROLLER://:9093"
+      KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://kafka:9092"
+      KAFKA_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+      KAFKA_INTER_BROKER_LISTENER_NAME: "PLAINTEXT"
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+      KAFKA_CLUSTER_ID: "${KAFKA_CLUSTER_ID}"
+      KAFKA_LOG_DIRS: "/var/lib/kafka/data"
     volumes:
-      - kafka_data:/bitnami/kafka
+      - kafka_data:/var/lib/kafka/data
     networks:
       default:
         ipv4_address: 172.70.0.4

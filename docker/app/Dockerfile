@@ -16,6 +16,7 @@ RUN uv pip install --system -r pyproject.toml
 COPY /common .
 COPY /app .
 COPY /migrations .
+COPY /alembic.ini .
 
 ENV PYTHONPATH=/app \
     PYTHONUNBUFFERED=1
